@@ -9,7 +9,16 @@ data class Recipe(
     val difficulty: String?,
     @SerializedName("image_url") val imageUrl: String?,
     @SerializedName("cooking_time") val cookingTime: Int?,
+    @SerializedName("Likes") val likes: List<RecipeLike>? = emptyList(),
+    // We keep these for optimistic UI updates:
+    @SerializedName("likes_count") var likesCount: Int? = null,
+    @SerializedName("comments_count") var commentsCount: Int? = null,
+    @SerializedName("is_liked") var isLiked: Boolean? = null,
     val User: User?
+)
+
+data class RecipeLike(
+    @SerializedName("user_id") val userId: String
 )
 
 data class User(

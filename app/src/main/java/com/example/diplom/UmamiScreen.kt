@@ -27,29 +27,20 @@ import androidx.compose.ui.unit.sp
 import com.example.diplom.ui.theme.*
 import com.example.diplom.data.*
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.diplom.ui.theme.InterFontFamily
-
-
+import com.example.diplom.ui.navigation.Routes
 
 @Composable
-fun UmamiMobileScreen(viewModel: RecipeViewModel = viewModel()) {
+fun UmamiMainScreen(navController: NavController, viewModel: RecipeViewModel = viewModel()) {
     val state by viewModel.state
 
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = { UmamiTopBar() },
-        bottomBar = { UmamiBottomNavigation() },
-        floatingActionButton = { AddRecipeFab() },
-        floatingActionButtonPosition = FabPosition.Center,
-    ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            contentPadding = PaddingValues(bottom = 16.dp)
-        ) {
-            item { 
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 16.dp)
+    ) {
+        item { 
                 FilterSection(
                     title = "Категории",
                     items = viewModel.categories.value,
@@ -89,7 +80,11 @@ fun UmamiMobileScreen(viewModel: RecipeViewModel = viewModel()) {
                 }
                 is RecipeState.Success -> {
                     items(recipeState.recipes) { recipe ->
-                        RecipePostCard(recipe)
+                        RecipePostCard(
+                            recipe = recipe,
+                            onClick = { navController.navigate("recipe_detail/${recipe.id}") },
+                            onLikeClick = { viewModel.toggleLike(recipe.id, recipe.isLiked == true) }
+                        )
                     }
                 }
                 is RecipeState.Error -> {
@@ -105,15 +100,16 @@ fun UmamiMobileScreen(viewModel: RecipeViewModel = viewModel()) {
                     }
                 }
             }
-            
-            item { Spacer(modifier = Modifier.height(80.dp)) }
         }
     }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UmamiTopBar() {
+fun UmamiTopBar(
+    isLoggedIn: Boolean = false,
+    username: String? = null,
+    onAuthClick: () -> Unit = {}
+) {
     TopAppBar(
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = MaterialTheme.colorScheme.background
@@ -141,16 +137,31 @@ fun UmamiTopBar() {
             
             Spacer(modifier = Modifier.width(8.dp))
             
-            // Profile Pill from drawable (contains orange pill, text, and icon)
-            Image(
-                painter = painterResource(id = R.drawable.profile),
-                contentDescription = "Profile",
-                modifier = Modifier
-                    .width(140.dp) // Scaled up from 122dp
-                    .height(42.dp) // Scaled up from 36dp
-                    .clickable { /* TODO */ },
-                contentScale = ContentScale.Fit
-            )
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = UmamiOrange,
+                modifier = Modifier.height(36.dp).clickable { if (!isLoggedIn) onAuthClick() }
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                ) {
+                    Text(
+                        text = if (isLoggedIn) (username?.uppercase() ?: "ПРОФИЛЬ") else "ВОЙТИ / РЕГИСТРАЦИЯ",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 10.sp,
+                        fontFamily = InterFontFamily
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = "Profile",
+                        tint = Color.White,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
             
             Spacer(modifier = Modifier.width(12.dp))
         }
@@ -350,7 +361,7 @@ fun CategoryCard(
 }
 
 @Composable
-fun RecipePostCard(recipe: Recipe) {
+fun RecipePostCard(recipe: com.example.diplom.data.Recipe, onClick: () -> Unit, onLikeClick: () -> Unit) {
     Card(
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -358,6 +369,7 @@ fun RecipePostCard(recipe: Recipe) {
         modifier = Modifier
             .padding(horizontal = 20.dp, vertical = 10.dp)
             .fillMaxWidth()
+            .clickable { onClick() }
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             // User Header
@@ -455,14 +467,23 @@ fun RecipePostCard(recipe: Recipe) {
 
             // Stats
             Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                StatItem(icon = Icons.Outlined.FavoriteBorder, count = "0")
-                StatItem(icon = Icons.Outlined.ModeComment, count = "0")
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { onLikeClick() }) {
+                    val currentLikes = recipe.likesCount ?: recipe.likes?.size ?: 0
+                    val currentIsLiked = recipe.isLiked == true
+
+                    Icon(
+                        if (currentIsLiked) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,
+                        contentDescription = "Like",
+                        modifier = Modifier.size(24.dp),
+                        tint = if (currentIsLiked) UmamiOrange else Color.Gray
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(currentLikes.toString(), fontWeight = FontWeight.Bold, color = Color.DarkGray, fontFamily = InterFontFamily)
+                }
+                StatItem(icon = Icons.Outlined.ModeComment, count = recipe.commentsCount?.toString() ?: "0")
             }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp), color = Color(0xFFF0F0F0))
-
-            // Comment Preview
-            CommentPreview()
         }
     }
 }
@@ -557,7 +578,10 @@ fun CommentPreview() {
 }
 
 @Composable
-fun UmamiBottomNavigation() {
+fun UmamiBottomNavigation(
+    currentRoute: String,
+    onNavigate: (String) -> Unit
+) {
     NavigationBar(
         containerColor = UmamiWhite,
         tonalElevation = 8.dp,
@@ -566,8 +590,8 @@ fun UmamiBottomNavigation() {
             .clip(RoundedCornerShape(topStart = 25.dp, topEnd = 25.dp))
     ) {
         NavigationBarItem(
-            selected = true,
-            onClick = { },
+            selected = currentRoute == Routes.MAIN,
+            onClick = { onNavigate(Routes.MAIN) },
             icon = { Icon(Icons.Default.Home, contentDescription = null) },
             label = { Text("Главная", fontSize = 10.sp) },
             colors = NavigationBarItemDefaults.colors(
@@ -579,24 +603,45 @@ fun UmamiBottomNavigation() {
             )
         )
         NavigationBarItem(
-            selected = false,
-            onClick = { },
+            selected = currentRoute == Routes.SEARCH,
+            onClick = { onNavigate(Routes.SEARCH) },
             icon = { Icon(Icons.Default.Search, contentDescription = null) },
-            label = { Text("Поиск", fontSize = 10.sp) }
+            label = { Text("Поиск", fontSize = 10.sp) },
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor = UmamiOrange,
+                selectedTextColor = UmamiOrange,
+                unselectedIconColor = Color.LightGray,
+                unselectedTextColor = Color.LightGray,
+                indicatorColor = Color.Transparent
+            )
         )
         // Add item placeholder to offset for FAB
         Spacer(modifier = Modifier.weight(1f))
         NavigationBarItem(
-            selected = false,
-            onClick = { },
+            selected = currentRoute == Routes.FAVORITES,
+            onClick = { onNavigate(Routes.FAVORITES) },
             icon = { Icon(Icons.Default.Bookmark, contentDescription = null) },
-            label = { Text("Избранное", fontSize = 10.sp) }
+            label = { Text("Избранное", fontSize = 10.sp) },
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor = UmamiOrange,
+                selectedTextColor = UmamiOrange,
+                unselectedIconColor = Color.LightGray,
+                unselectedTextColor = Color.LightGray,
+                indicatorColor = Color.Transparent
+            )
         )
         NavigationBarItem(
-            selected = false,
-            onClick = { },
+            selected = currentRoute == Routes.PROFILE,
+            onClick = { onNavigate(Routes.PROFILE) },
             icon = { Icon(Icons.Default.Person, contentDescription = null) },
-            label = { Text("Кабинет", fontSize = 10.sp) }
+            label = { Text("Кабинет", fontSize = 10.sp) },
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor = UmamiOrange,
+                selectedTextColor = UmamiOrange,
+                unselectedIconColor = Color.LightGray,
+                unselectedTextColor = Color.LightGray,
+                indicatorColor = Color.Transparent
+            )
         )
     }
 }

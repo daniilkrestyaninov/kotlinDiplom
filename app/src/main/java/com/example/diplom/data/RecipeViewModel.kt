@@ -38,7 +38,7 @@ class RecipeViewModel : ViewModel() {
     var selectedCookingId by mutableStateOf<String?>(null)
     var selectedCelebrationId by mutableStateOf<String?>(null)
 
-    private val service = RecipeService.create()
+    private val service = ApiClient.recipeService
 
     init {
         initialFetch()
@@ -79,6 +79,36 @@ class RecipeViewModel : ViewModel() {
                 _state.value = RecipeState.Success(recipes)
             } catch (e: Exception) {
                 _state.value = RecipeState.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+
+    fun toggleLike(recipeId: String, isCurrentlyLiked: Boolean) {
+        val currentState = _state.value
+        if (currentState is RecipeState.Success) {
+            val updatedRecipes = currentState.recipes.map { recipe ->
+                if (recipe.id == recipeId) {
+                    recipe.copy(
+                        isLiked = !isCurrentlyLiked,
+                        likesCount = (recipe.likesCount ?: 0) + (if (isCurrentlyLiked) -1 else 1)
+                    )
+                } else {
+                    recipe
+                }
+            }
+            _state.value = RecipeState.Success(updatedRecipes)
+            
+            viewModelScope.launch {
+                try {
+                    if (isCurrentlyLiked) {
+                        service.unlikeRecipe(recipeId)
+                    } else {
+                        service.likeRecipe(recipeId)
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("RecipeViewModel", "Like toggle failed", e)
+                    _state.value = currentState
+                }
             }
         }
     }

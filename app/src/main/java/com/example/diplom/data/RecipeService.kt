@@ -3,6 +3,10 @@ package com.example.diplom.data
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
+import retrofit2.http.POST
+import retrofit2.http.DELETE
+import retrofit2.http.Path
+import retrofit2.http.Body
 
 interface RecipeService {
     @GET("recipes")
@@ -12,6 +16,21 @@ interface RecipeService {
         @retrofit2.http.Query("cooking_id") cookingId: String? = null,
         @retrofit2.http.Query("celebration_id") celebrationId: String? = null
     ): List<Recipe>
+
+    @GET("recipes/{id}")
+    suspend fun getRecipeById(@Path("id") id: String): Recipe
+
+    @POST("recipes/{id}/like")
+    suspend fun likeRecipe(@Path("id") id: String)
+
+    @DELETE("recipes/{id}/like")
+    suspend fun unlikeRecipe(@Path("id") id: String)
+
+    @GET("recipes/{id}/comments")
+    suspend fun getComments(@Path("id") id: String): List<Comment>
+
+    @POST("recipes/{id}/comments")
+    suspend fun postComment(@Path("id") id: String, @Body request: CommentRequest)
 
     @GET("meta/categories")
     suspend fun getCategories(): List<Category>

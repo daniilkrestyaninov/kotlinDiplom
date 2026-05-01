@@ -10,12 +10,22 @@ import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
 
 import com.example.diplom.ui.theme.DiplomTheme
+import com.example.diplom.ui.navigation.UmamiApp
+
+import com.example.diplom.data.ApiClient
+import com.example.diplom.data.TokenManager
 
 // 1. Наследуемся от ComponentActivity (а не AppCompatActivity)
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        val tokenManager = TokenManager(this)
+        ApiClient.init(tokenManager)
+        
+        // We instantiate AuthViewModel here or inside UmamiApp using a ViewModelProvider factory.
+        // For simplicity in Compose, we can just pass the tokenManager to UmamiApp and let it instantiate.
 
         // 2. Вместо setContentView используем setContent
         setContent {
@@ -27,7 +37,7 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     // Вызываем наш UI-компонент (мобильный экран УМАМИ)
-                    UmamiMobileScreen()
+                    UmamiApp(tokenManager)
                 }
             }
         }
