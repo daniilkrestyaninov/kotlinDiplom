@@ -70,20 +70,20 @@ data class CreateRecipeRequest(
     val description: String,
     val difficulty: String?,
     @SerializedName("image_url") val imageUrl: String?,
-    @SerializedName("cooking_time") val cookingTime: Int?,
-    val portion: Int?,
-    val calorific: Int?,
+    @SerializedName("cooking_time") val cookingTime: Int,
+    val portion: Int,
+    val calorific: Int? = null,
     @SerializedName("is_private") val isPrivate: Boolean = false,
-    @SerializedName("kitchen_id") val kitchenId: String? = null,
-    @SerializedName("celebration_id") val celebrationId: String? = null,
-    @SerializedName("cooking_id") val cookingId: String? = null,
+    @SerializedName("kitchen_id") val kitchenId: Int? = null,
+    @SerializedName("celebration_id") val celebrationId: Int? = null,
+    @SerializedName("cooking_id") val cookingId: Int? = null,
     val ingredients: List<IngredientInput> = emptyList(),
     val steps: List<StepInput> = emptyList(),
-    val categories: List<String> = emptyList()
+    val categories: List<Int> = emptyList()
 )
 
 data class IngredientInput(
-    val id: String,
+    val id: Int,
     val quantity: String?,
     val note: String?
 )

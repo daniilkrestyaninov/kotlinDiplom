@@ -21,6 +21,7 @@ import com.example.diplom.UmamiRecipeDetailScreen
 import com.example.diplom.UmamiChatScreen
 import com.example.diplom.AuthModal
 import com.example.diplom.AddRecipeScreen
+import com.example.diplom.UmamiFavoritesScreen
 import com.example.diplom.data.TokenManager
 import com.example.diplom.data.AuthViewModel
 import com.example.diplom.data.AuthState
@@ -116,11 +117,10 @@ fun UmamiApp(tokenManager: TokenManager) {
                 UmamiSearchScreen(navController = navController, currentUserId = currentUserId)
             }
             composable(Routes.FAVORITES) {
-                // TODO: UmamiFavoritesScreen (can just reuse Main feed with filter)
                 if (!isLoggedIn) {
                     com.example.diplom.LoginRequiredScreen(onLoginClick = { showAuthModal = true })
                 } else {
-                    // favorites content
+                    UmamiFavoritesScreen(navController = navController, currentUserId = currentUserId)
                 }
             }
             composable(Routes.PROFILE) {

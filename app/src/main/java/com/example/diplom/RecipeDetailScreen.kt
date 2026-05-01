@@ -8,6 +8,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.diplom.ui.theme.InterFontFamily
 import com.example.diplom.ui.theme.UmamiOrange
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,6 +42,9 @@ fun UmamiRecipeDetailScreen(
 
     val state by viewModel.state
 
+    val scope = rememberCoroutineScope()
+    var isFavorited by remember { mutableStateOf(false) }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -54,8 +60,31 @@ fun UmamiRecipeDetailScreen(
                         r.isLiked ?: r.likes?.any { it.userId == currentUserId } ?: false
                     } else false
                     
+                    // Favorite (bookmark) button
+                    IconButton(onClick = {
+                        scope.launch {
+                            try {
+                                if (isFavorited) {
+                                    com.example.diplom.data.ApiClient.userService.removeFavorite(recipeId)
+                                } else {
+                                    com.example.diplom.data.ApiClient.userService.addFavorite(recipeId)
+                                }
+                                isFavorited = !isFavorited
+                            } catch (e: Exception) {
+                                android.util.Log.e("RecipeDetail", "Favorite toggle failed", e)
+                            }
+                        }
+                    }) {
+                        Icon(
+                            if (isFavorited) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                            contentDescription = "Избранное",
+                            tint = if (isFavorited) UmamiOrange else Color.Gray
+                        )
+                    }
+                    
+                    // Like button
                     IconButton(onClick = { viewModel.toggleLike(recipeId, isLiked, currentUserId) }) {
-                        Icon(Icons.Default.Star, contentDescription = "Favorite", tint = if (isLiked) UmamiOrange else Color.Gray)
+                        Icon(Icons.Default.Star, contentDescription = "Лайк", tint = if (isLiked) UmamiOrange else Color.Gray)
                     }
                 }
             )
@@ -116,6 +145,97 @@ fun UmamiRecipeDetailScreen(
                                 fontSize = 14.sp
                             )
                         }
+                        
+                        // Author info with follow button
+                        if (recipe.User != null) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            var isFollowing by remember { mutableStateOf(false) }
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = Color(0xFFF9F9F9),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    if (!recipe.User.avatarUrl.isNullOrEmpty()) {
+                                        coil.compose.AsyncImage(
+                                            model = recipe.User.avatarUrl,
+                                            contentDescription = "Avatar",
+                                            modifier = Modifier
+                                                .size(40.dp)
+                                                .clip(androidx.compose.foundation.shape.CircleShape)
+                                                .background(Color.LightGray),
+                                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                        )
+                                    } else {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(40.dp)
+                                                .clip(androidx.compose.foundation.shape.CircleShape)
+                                                .background(UmamiOrange.copy(alpha = 0.2f)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                recipe.User.username.firstOrNull()?.uppercase() ?: "?",
+                                                fontWeight = FontWeight.Bold,
+                                                color = UmamiOrange,
+                                                fontFamily = InterFontFamily
+                                            )
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            recipe.User.name ?: recipe.User.username,
+                                            fontWeight = FontWeight.Bold,
+                                            fontFamily = InterFontFamily,
+                                            fontSize = 14.sp
+                                        )
+                                        Text(
+                                            "@${recipe.User.username}",
+                                            color = Color.Gray,
+                                            fontFamily = InterFontFamily,
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                    // Don't show follow button for yourself
+                                    if (currentUserId != null && recipe.User.id != currentUserId) {
+                                        Button(
+                                            onClick = {
+                                                scope.launch {
+                                                    try {
+                                                        if (isFollowing) {
+                                                            com.example.diplom.data.ApiClient.userService.unfollow(recipe.User.id)
+                                                        } else {
+                                                            com.example.diplom.data.ApiClient.userService.follow(recipe.User.id)
+                                                        }
+                                                        isFollowing = !isFollowing
+                                                    } catch (e: Exception) {
+                                                        android.util.Log.e("RecipeDetail", "Follow toggle failed", e)
+                                                    }
+                                                }
+                                            },
+                                            shape = RoundedCornerShape(20.dp),
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = if (isFollowing) Color.LightGray else UmamiOrange
+                                            ),
+                                            modifier = Modifier.height(32.dp),
+                                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
+                                        ) {
+                                            Text(
+                                                if (isFollowing) "Отписаться" else "Подписаться",
+                                                fontSize = 12.sp,
+                                                fontFamily = InterFontFamily,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
                         Spacer(modifier = Modifier.height(16.dp))
 
                         Row(

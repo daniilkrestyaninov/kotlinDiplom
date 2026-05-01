@@ -58,7 +58,7 @@ fun AddRecipeScreen(navController: NavController) {
     var cookingTime by remember { mutableStateOf("") }
     var portion by remember { mutableStateOf("") }
     var calorific by remember { mutableStateOf("") }
-    var difficulty by remember { mutableStateOf("Легко") }
+    var difficulty by remember { mutableStateOf("1") }
     var isPrivate by remember { mutableStateOf(false) }
 
     // Image
@@ -294,11 +294,12 @@ fun AddRecipeScreen(navController: NavController) {
                 Text("Сложность", fontWeight = FontWeight.Bold, fontFamily = InterFontFamily, fontSize = 14.sp)
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("Легко", "Средне", "Сложно").forEach { level ->
+                    val difficultyLabels = mapOf("1" to "Очень легко", "2" to "Легко", "3" to "Средне", "4" to "Сложно", "5" to "Очень сложно")
+                    difficultyLabels.forEach { (value, label) ->
                         FilterChip(
-                            selected = difficulty == level,
-                            onClick = { difficulty = level },
-                            label = { Text(level, fontFamily = InterFontFamily) },
+                            selected = difficulty == value,
+                            onClick = { difficulty = value },
+                            label = { Text(label, fontFamily = InterFontFamily, fontSize = 11.sp) },
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = UmamiOrange,
                                 selectedLabelColor = Color.White
@@ -444,6 +445,14 @@ fun AddRecipeScreen(navController: NavController) {
                             Toast.makeText(context, "Заполните название и описание", Toast.LENGTH_SHORT).show()
                             return@Button
                         }
+                        if (cookingTime.isBlank() || cookingTime.toIntOrNull() == null) {
+                            Toast.makeText(context, "Укажите время готовки", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+                        if (portion.isBlank() || portion.toIntOrNull() == null) {
+                            Toast.makeText(context, "Укажите количество порций", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
                         isLoading = true
                         scope.launch {
                             try {
@@ -479,16 +488,16 @@ fun AddRecipeScreen(navController: NavController) {
                                     description = description,
                                     difficulty = difficulty,
                                     imageUrl = uploadedMainUrl,
-                                    cookingTime = cookingTime.toIntOrNull(),
-                                    portion = portion.toIntOrNull(),
+                                    cookingTime = cookingTime.toIntOrNull() ?: 0,
+                                    portion = portion.toIntOrNull() ?: 1,
                                     calorific = calorific.toIntOrNull(),
                                     isPrivate = isPrivate,
-                                    kitchenId = selectedKitchenId,
-                                    celebrationId = selectedCelebrationId,
-                                    cookingId = selectedCookingId,
+                                    kitchenId = selectedKitchenId?.toIntOrNull(),
+                                    celebrationId = selectedCelebrationId?.toIntOrNull(),
+                                    cookingId = selectedCookingId?.toIntOrNull(),
                                     ingredients = selectedIngredients,
                                     steps = stepInputs,
-                                    categories = selectedCategoryIds.toList()
+                                    categories = selectedCategoryIds.mapNotNull { it.toIntOrNull() }
                                 )
 
                                 service.createRecipe(request)
