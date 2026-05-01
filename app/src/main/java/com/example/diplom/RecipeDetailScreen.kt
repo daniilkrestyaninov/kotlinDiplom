@@ -26,9 +26,11 @@ import com.example.diplom.ui.theme.UmamiOrange
 fun UmamiRecipeDetailScreen(
     navController: NavController, 
     recipeId: String, 
+    initialTab: String = "",
+    currentUserId: String? = null,
     viewModel: com.example.diplom.data.RecipeDetailViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
-    var selectedTab by remember { mutableIntStateOf(0) }
+    var selectedTab by remember { mutableIntStateOf(if (initialTab == "comments") 3 else 0) }
     val tabs = listOf("Ингредиенты", "Шаги", "Питание", "Отзывы")
 
     LaunchedEffect(recipeId) {
@@ -47,10 +49,12 @@ fun UmamiRecipeDetailScreen(
                     }
                 },
                 actions = {
-                    val isLiked = if (state is com.example.diplom.data.RecipeDetailState.Success) 
-                        (state as com.example.diplom.data.RecipeDetailState.Success).recipe.isLiked == true else false
+                    val isLiked = if (state is com.example.diplom.data.RecipeDetailState.Success) {
+                        val r = (state as com.example.diplom.data.RecipeDetailState.Success).recipe
+                        r.isLiked ?: r.likes?.any { it.userId == currentUserId } ?: false
+                    } else false
                     
-                    IconButton(onClick = { viewModel.toggleLike(recipeId, isLiked) }) {
+                    IconButton(onClick = { viewModel.toggleLike(recipeId, isLiked, currentUserId) }) {
                         Icon(Icons.Default.Star, contentDescription = "Favorite", tint = if (isLiked) UmamiOrange else Color.Gray)
                     }
                 }
@@ -119,8 +123,8 @@ fun UmamiRecipeDetailScreen(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             DetailStat("${recipe.cookingTime ?: 0} мин", "готовка")
-                            DetailStat("2 порц.", "выход")
-                            DetailStat("420", "ккал")
+                            DetailStat("${recipe.portion ?: "—"} порц.", "выход")
+                            DetailStat("${recipe.calorific ?: "—"}", "ккал")
                         }
                         Spacer(modifier = Modifier.height(24.dp))
 
@@ -155,9 +159,110 @@ fun UmamiRecipeDetailScreen(
                     
                     item {
                         when (selectedTab) {
-                            0 -> Text("Ингредиенты пока не загружены", fontFamily = InterFontFamily)
-                            1 -> Text("Шаги приготовления пока не загружены", fontFamily = InterFontFamily)
-                            2 -> Text("Пищевая ценность пока не загружена", fontFamily = InterFontFamily)
+                            0 -> {
+                                // Ингредиенты
+                                Column {
+                                    Text("Ингредиенты", fontWeight = FontWeight.Bold, fontFamily = InterFontFamily, fontSize = 18.sp)
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    if (recipe.ingredients.isNullOrEmpty()) {
+                                        Text("Ингредиенты не указаны", fontFamily = InterFontFamily, color = Color.Gray)
+                                    } else {
+                                        recipe.ingredients.forEach { ingredient ->
+                                            Surface(
+                                                color = Color(0xFFF9F9F9),
+                                                shape = RoundedCornerShape(12.dp),
+                                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier.padding(12.dp),
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Text(
+                                                        ingredient.name ?: "—",
+                                                        fontFamily = InterFontFamily,
+                                                        fontWeight = FontWeight.Medium,
+                                                        modifier = Modifier.weight(1f)
+                                                    )
+                                                    val qty = ingredient.pivot?.quantity ?: ""
+                                                    val note = ingredient.pivot?.note ?: ""
+                                                    val detail = listOfNotNull(
+                                                        qty.takeIf { it.isNotBlank() },
+                                                        note.takeIf { it.isNotBlank() }
+                                                    ).joinToString(" · ")
+                                                    if (detail.isNotEmpty()) {
+                                                        Text(detail, fontFamily = InterFontFamily, color = UmamiOrange, fontSize = 13.sp)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            1 -> {
+                                // Шаги
+                                Column {
+                                    Text("Шаги приготовления", fontWeight = FontWeight.Bold, fontFamily = InterFontFamily, fontSize = 18.sp)
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    if (recipe.steps.isNullOrEmpty()) {
+                                        Text("Шаги не указаны", fontFamily = InterFontFamily, color = Color.Gray)
+                                    } else {
+                                        recipe.steps.sortedBy { it.stepNumber }.forEach { step ->
+                                            Surface(
+                                                color = Color(0xFFF9F9F9),
+                                                shape = RoundedCornerShape(12.dp),
+                                                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)
+                                            ) {
+                                                Column(modifier = Modifier.padding(12.dp)) {
+                                                    Text(
+                                                        "Шаг ${step.stepNumber}",
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = UmamiOrange,
+                                                        fontFamily = InterFontFamily,
+                                                        fontSize = 14.sp
+                                                    )
+                                                    Spacer(modifier = Modifier.height(4.dp))
+                                                    Text(step.description, fontFamily = InterFontFamily, fontSize = 14.sp)
+                                                    if (!step.imageUrl.isNullOrEmpty()) {
+                                                        Spacer(modifier = Modifier.height(8.dp))
+                                                        coil.compose.AsyncImage(
+                                                            model = step.imageUrl,
+                                                            contentDescription = "Шаг ${step.stepNumber}",
+                                                            modifier = Modifier
+                                                                .fillMaxWidth()
+                                                                .height(150.dp)
+                                                                .clip(RoundedCornerShape(12.dp)),
+                                                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            2 -> {
+                                // Питание
+                                Column {
+                                    Text("Пищевая ценность", fontWeight = FontWeight.Bold, fontFamily = InterFontFamily, fontSize = 18.sp)
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Surface(
+                                        color = Color(0xFFF9F9F9),
+                                        shape = RoundedCornerShape(12.dp),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Column(modifier = Modifier.padding(16.dp)) {
+                                            NutritionRow("Калории", "${recipe.calorific ?: "—"} ккал")
+                                            NutritionRow("Порции", "${recipe.portion ?: "—"}")
+                                            NutritionRow("Время готовки", "${recipe.cookingTime ?: "—"} мин")
+                                            NutritionRow("Сложность", recipe.difficulty ?: "—")
+                                            if (recipe.kitchen != null) NutritionRow("Кухня", recipe.kitchen.name)
+                                            if (recipe.typeCooking != null) NutritionRow("Тип готовки", recipe.typeCooking.name)
+                                            if (recipe.celebration != null) NutritionRow("Праздник", recipe.celebration.name)
+                                        }
+                                    }
+                                }
+                            }
                             3 -> {
                                 Column {
                                     Text("Отзывы (${comments.size})", fontWeight = FontWeight.Bold, fontFamily = InterFontFamily)
@@ -169,8 +274,8 @@ fun UmamiRecipeDetailScreen(
                                             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
                                         ) {
                                             Column(modifier = Modifier.padding(12.dp)) {
-                                                Text(comment.User?.name ?: comment.User?.username ?: "Пользователь", fontWeight = FontWeight.Bold, fontSize = 14.sp, fontFamily = InterFontFamily)
-                                                Text(comment.text, fontSize = 14.sp, fontFamily = InterFontFamily, modifier = Modifier.padding(top = 4.dp))
+                                                Text(comment.author?.name ?: comment.author?.username ?: "Пользователь", fontWeight = FontWeight.Bold, fontSize = 14.sp, fontFamily = InterFontFamily)
+                                                Text(comment.content, fontSize = 14.sp, fontFamily = InterFontFamily, modifier = Modifier.padding(top = 4.dp))
                                             }
                                         }
                                     }
@@ -219,5 +324,18 @@ fun DetailStat(value: String, label: String) {
             Text(value, color = UmamiOrange, fontWeight = FontWeight.Bold, fontSize = 18.sp, fontFamily = InterFontFamily)
             Text(label, color = Color.Gray, fontSize = 12.sp, fontFamily = InterFontFamily)
         }
+    }
+}
+
+@Composable
+fun NutritionRow(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(label, fontFamily = InterFontFamily, color = Color.Gray, fontSize = 14.sp)
+        Text(value, fontFamily = InterFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp)
     }
 }

@@ -35,10 +35,12 @@ class RecipeDetailViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 recipeService.postComment(recipeId, CommentRequest(text, rating))
+                // Reload recipe and comments to get fresh data
                 val currentState = _state.value
                 if (currentState is RecipeDetailState.Success) {
+                    val recipe = recipeService.getRecipeById(recipeId)
                     val comments = recipeService.getComments(recipeId)
-                    _state.value = currentState.copy(comments = comments)
+                    _state.value = RecipeDetailState.Success(recipe, comments)
                 }
             } catch (e: Exception) {
                 android.util.Log.e("RecipeDetailViewModel", "Post comment failed", e)
@@ -46,12 +48,21 @@ class RecipeDetailViewModel : ViewModel() {
         }
     }
     
-    fun toggleLike(recipeId: String, isCurrentlyLiked: Boolean) {
+    fun toggleLike(recipeId: String, isCurrentlyLiked: Boolean, currentUserId: String?) {
         val currentState = _state.value
         if (currentState is RecipeDetailState.Success) {
+            // Optimistic update: toggle the like state
+            val currentLikes = currentState.recipe.likes?.toMutableList() ?: mutableListOf()
+            val newLikes = if (isCurrentlyLiked) {
+                currentLikes.filter { it.userId != currentUserId }
+            } else {
+                if (currentUserId != null) currentLikes + RecipeLike(currentUserId) else currentLikes
+            }
+            
             val updatedRecipe = currentState.recipe.copy(
                 isLiked = !isCurrentlyLiked,
-                likesCount = (currentState.recipe.likesCount ?: 0) + (if (isCurrentlyLiked) -1 else 1)
+                likes = newLikes,
+                likesCount = newLikes.size
             )
             _state.value = currentState.copy(recipe = updatedRecipe)
             

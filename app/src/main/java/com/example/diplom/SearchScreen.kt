@@ -22,7 +22,7 @@ import com.example.diplom.ui.theme.UmamiOrange
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UmamiSearchScreen(navController: NavController, viewModel: RecipeViewModel = viewModel()) {
+fun UmamiSearchScreen(navController: NavController, currentUserId: String? = null, viewModel: RecipeViewModel = viewModel()) {
     var searchQuery by remember { mutableStateOf("") }
     val state by viewModel.state
 
@@ -108,10 +108,14 @@ fun UmamiSearchScreen(navController: NavController, viewModel: RecipeViewModel =
                     )
                 }
                 items(recipeState.recipes) { recipe ->
+                    val isLiked = recipe.isLiked ?: recipe.likes?.any { it.userId == currentUserId } ?: false
+                    val likesCount = recipe.likesCount ?: recipe.likes?.size ?: 0
+                    
                     RecipePostCard(
-                        recipe = recipe,
+                        recipe = recipe.copy(isLiked = isLiked, likesCount = likesCount),
                         onClick = { navController.navigate("recipe_detail/${recipe.id}") },
-                        onLikeClick = { viewModel.toggleLike(recipe.id, recipe.isLiked == true) }
+                        onLikeClick = { viewModel.toggleLike(recipe.id, isLiked, currentUserId) },
+                        onCommentClick = { navController.navigate("recipe_detail/${recipe.id}?tab=comments") }
                     )
                 }
             }

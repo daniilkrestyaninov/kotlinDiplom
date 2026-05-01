@@ -33,7 +33,7 @@ import com.example.diplom.ui.theme.InterFontFamily
 import com.example.diplom.ui.navigation.Routes
 
 @Composable
-fun UmamiMainScreen(navController: NavController, viewModel: RecipeViewModel = viewModel()) {
+fun UmamiMainScreen(navController: NavController, currentUserId: String? = null, viewModel: RecipeViewModel = viewModel()) {
     val state by viewModel.state
 
     LazyColumn(
@@ -80,10 +80,14 @@ fun UmamiMainScreen(navController: NavController, viewModel: RecipeViewModel = v
                 }
                 is RecipeState.Success -> {
                     items(recipeState.recipes) { recipe ->
+                        val isLiked = recipe.isLiked ?: recipe.likes?.any { it.userId == currentUserId } ?: false
+                        val likesCount = recipe.likesCount ?: recipe.likes?.size ?: 0
+                        
                         RecipePostCard(
-                            recipe = recipe,
+                            recipe = recipe.copy(isLiked = isLiked, likesCount = likesCount),
                             onClick = { navController.navigate("recipe_detail/${recipe.id}") },
-                            onLikeClick = { viewModel.toggleLike(recipe.id, recipe.isLiked == true) }
+                            onLikeClick = { viewModel.toggleLike(recipe.id, isLiked, currentUserId) },
+                            onCommentClick = { navController.navigate("recipe_detail/${recipe.id}?tab=comments") }
                         )
                     }
                 }
@@ -361,7 +365,22 @@ fun CategoryCard(
 }
 
 @Composable
-fun RecipePostCard(recipe: com.example.diplom.data.Recipe, onClick: () -> Unit, onLikeClick: () -> Unit) {
+fun RecipePostCard(
+    recipe: com.example.diplom.data.Recipe, 
+    onClick: () -> Unit, 
+    onLikeClick: () -> Unit,
+    onCommentClick: () -> Unit
+) {
+    var comments by remember { mutableStateOf<List<com.example.diplom.data.Comment>?>(null) }
+    
+    LaunchedEffect(recipe.id) {
+        try {
+            comments = com.example.diplom.data.ApiClient.recipeService.getComments(recipe.id)
+        } catch (e: Exception) {
+            // ignore
+        }
+    }
+
     Card(
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -480,10 +499,18 @@ fun RecipePostCard(recipe: com.example.diplom.data.Recipe, onClick: () -> Unit, 
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(currentLikes.toString(), fontWeight = FontWeight.Bold, color = Color.DarkGray, fontFamily = InterFontFamily)
                 }
-                StatItem(icon = Icons.Outlined.ModeComment, count = recipe.commentsCount?.toString() ?: "0")
+                    val currentCommentsCount = comments?.size ?: recipe.commentsCount ?: 0
+                StatItem(
+                    icon = Icons.Outlined.ModeComment, 
+                    count = currentCommentsCount.toString(),
+                    modifier = Modifier.clickable { onCommentClick() }
+                )
             }
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp), color = Color(0xFFF0F0F0))
+            if (!comments.isNullOrEmpty()) {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp), color = Color(0xFFF0F0F0))
+                CommentPreview(comment = comments!!.first())
+            }
         }
     }
 }
@@ -512,8 +539,8 @@ private fun IconBadge(icon: androidx.compose.ui.graphics.vector.ImageVector, con
 }
 
 @Composable
-fun StatItem(icon: androidx.compose.ui.graphics.vector.ImageVector, count: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
+fun StatItem(icon: androidx.compose.ui.graphics.vector.ImageVector, count: String, modifier: Modifier = Modifier) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
         Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = Color.Gray)
         Spacer(modifier = Modifier.width(6.dp))
         Text(count, fontWeight = FontWeight.Bold, color = Color.DarkGray, fontFamily = InterFontFamily)
@@ -521,58 +548,36 @@ fun StatItem(icon: androidx.compose.ui.graphics.vector.ImageVector, count: Strin
 }
 
 @Composable
-fun CommentPreview() {
+fun CommentPreview(comment: com.example.diplom.data.Comment) {
     Column {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Image(
-                painter = painterResource(id = R.drawable.ic_avatar),
+            AsyncImage(
+                model = comment.author?.avatarUrl ?: R.drawable.ic_avatar,
                 contentDescription = null,
                 modifier = Modifier
                     .size(32.dp)
-                    .clip(CircleShape)
+                    .clip(CircleShape),
+                contentScale = ContentScale.Crop
             )
             Spacer(modifier = Modifier.width(10.dp))
             Text(
-                text = "Мария Иванова",
+                text = comment.author?.name ?: comment.author?.username ?: "Пользователь",
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,
                 fontFamily = InterFontFamily
             )
-            Spacer(modifier = Modifier.width(4.dp))
-            Text("3 мин", color = Color.Gray, fontSize = 12.sp)
             Spacer(modifier = Modifier.weight(1f))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.FavoriteBorder, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.Gray)
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("12", fontSize = 12.sp, color = Color.Gray)
-            }
         }
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            "Паста с грибами и авокадо \uD83D\uDCF8\uD83D\uDDA4",
+            text = comment.content,
             fontSize = 14.sp,
-            modifier = Modifier.padding(paddingValues = PaddingValues(start = 42.dp))
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Box(
-            modifier = Modifier
-                .padding(start = 42.dp)
-                .size(100.dp, 60.dp)
-                .background(Color(0xFFF0F0F0), RoundedCornerShape(10.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("Фото", color = Color.LightGray, fontSize = 12.sp)
-        }
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            "Ответить",
-            fontWeight = FontWeight.Bold,
-            fontSize = 13.sp,
-            color = Color.Gray,
-            modifier = Modifier.padding(start = 42.dp)
+            modifier = Modifier.padding(start = 42.dp),
+            fontFamily = InterFontFamily,
+            color = Color.DarkGray
         )
     }
 }
@@ -647,9 +652,9 @@ fun UmamiBottomNavigation(
 }
 
 @Composable
-fun AddRecipeFab() {
+fun AddRecipeFab(onClick: () -> Unit = {}) {
     FloatingActionButton(
-        onClick = { },
+        onClick = onClick,
         containerColor = UmamiOrange,
         contentColor = Color.White,
         shape = CircleShape,

@@ -4,13 +4,14 @@ import com.google.gson.annotations.SerializedName
 
 data class Comment(
     val id: String,
-    val text: String,
-    val rating: Float?,
+    val content: String,
+    val rating: Int?,
     @SerializedName("created_at") val createdAt: String?,
-    val User: User?
+    @SerializedName("Author") val author: User?,
+    @SerializedName("Replies") val replies: List<Comment>? = emptyList()
 )
 
 data class CommentRequest(
-    val text: String,
+    val content: String,
     val rating: Int?
 )

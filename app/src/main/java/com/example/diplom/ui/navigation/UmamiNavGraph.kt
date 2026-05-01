@@ -9,6 +9,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import androidx.navigation.NavType
 import com.example.diplom.UmamiMainScreen
 import com.example.diplom.UmamiTopBar
 import com.example.diplom.UmamiBottomNavigation
@@ -18,6 +20,7 @@ import com.example.diplom.UmamiProfileScreen
 import com.example.diplom.UmamiRecipeDetailScreen
 import com.example.diplom.UmamiChatScreen
 import com.example.diplom.AuthModal
+import com.example.diplom.AddRecipeScreen
 import com.example.diplom.data.TokenManager
 import com.example.diplom.data.AuthViewModel
 import com.example.diplom.data.AuthState
@@ -33,10 +36,11 @@ object Routes {
     const val SEARCH = "search"
     const val FAVORITES = "favorites"
     const val PROFILE = "profile"
-    const val RECIPE_DETAIL = "recipe_detail/{recipeId}"
+    const val RECIPE_DETAIL = "recipe_detail/{recipeId}?tab={tab}"
     const val CHAT = "chat"
+    const val ADD_RECIPE = "add_recipe"
     
-    fun recipeDetail(recipeId: String) = "recipe_detail/$recipeId"
+    fun recipeDetail(recipeId: String, tab: String = "") = "recipe_detail/$recipeId?tab=$tab"
 }
 
 @Composable
@@ -45,6 +49,7 @@ fun UmamiApp(tokenManager: TokenManager) {
     val authState by authViewModel.state
     val isLoggedIn = authState is AuthState.Success
     val username = if (authState is AuthState.Success) (authState as AuthState.Success).user.username else null
+    val currentUserId = if (authState is AuthState.Success) (authState as AuthState.Success).user.id else null
 
     var showAuthModal by remember { mutableStateOf(false) }
 
@@ -84,7 +89,13 @@ fun UmamiApp(tokenManager: TokenManager) {
         },
         floatingActionButton = {
             if (showBottomBarAndTopBar) {
-                AddRecipeFab()
+                AddRecipeFab(onClick = {
+                    if (isLoggedIn) {
+                        navController.navigate(Routes.ADD_RECIPE)
+                    } else {
+                        showAuthModal = true
+                    }
+                })
             }
         },
         floatingActionButtonPosition = FabPosition.Center
@@ -99,10 +110,10 @@ fun UmamiApp(tokenManager: TokenManager) {
             popExitTransition = { fadeOut(animationSpec = tween(150)) }
         ) {
             composable(Routes.MAIN) {
-                UmamiMainScreen(navController = navController)
+                UmamiMainScreen(navController = navController, currentUserId = currentUserId)
             }
             composable(Routes.SEARCH) {
-                UmamiSearchScreen(navController = navController)
+                UmamiSearchScreen(navController = navController, currentUserId = currentUserId)
             }
             composable(Routes.FAVORITES) {
                 // TODO: UmamiFavoritesScreen (can just reuse Main feed with filter)
@@ -115,9 +126,19 @@ fun UmamiApp(tokenManager: TokenManager) {
             composable(Routes.PROFILE) {
                 UmamiProfileScreen(navController = navController, isLoggedIn = isLoggedIn, onLoginClick = { showAuthModal = true }, user = if (authState is AuthState.Success) (authState as AuthState.Success).user else null)
             }
-            composable(Routes.RECIPE_DETAIL) { backStackEntry ->
+            composable(
+                route = Routes.RECIPE_DETAIL,
+                arguments = listOf(
+                    navArgument("recipeId") { type = NavType.StringType },
+                    navArgument("tab") { type = NavType.StringType; defaultValue = "" }
+                )
+            ) { backStackEntry ->
                 val recipeId = backStackEntry.arguments?.getString("recipeId") ?: ""
-                UmamiRecipeDetailScreen(navController = navController, recipeId = recipeId)
+                val tab = backStackEntry.arguments?.getString("tab") ?: ""
+                UmamiRecipeDetailScreen(navController = navController, recipeId = recipeId, initialTab = tab, currentUserId = currentUserId)
+            }
+            composable(Routes.ADD_RECIPE) {
+                AddRecipeScreen(navController = navController)
             }
             composable(Routes.CHAT) {
                 if (!isLoggedIn) {

@@ -83,14 +83,21 @@ class RecipeViewModel : ViewModel() {
         }
     }
 
-    fun toggleLike(recipeId: String, isCurrentlyLiked: Boolean) {
+    fun toggleLike(recipeId: String, isCurrentlyLiked: Boolean, currentUserId: String? = null) {
         val currentState = _state.value
         if (currentState is RecipeState.Success) {
             val updatedRecipes = currentState.recipes.map { recipe ->
                 if (recipe.id == recipeId) {
+                    val currentLikes = recipe.likes?.toMutableList() ?: mutableListOf()
+                    val newLikes = if (isCurrentlyLiked) {
+                        currentLikes.filter { it.userId != currentUserId }
+                    } else {
+                        if (currentUserId != null) currentLikes + RecipeLike(currentUserId) else currentLikes
+                    }
                     recipe.copy(
                         isLiked = !isCurrentlyLiked,
-                        likesCount = (recipe.likesCount ?: 0) + (if (isCurrentlyLiked) -1 else 1)
+                        likes = newLikes,
+                        likesCount = newLikes.size
                     )
                 } else {
                     recipe

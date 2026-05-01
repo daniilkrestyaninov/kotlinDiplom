@@ -1,24 +1,30 @@
 package com.example.diplom.data
 
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
-import retrofit2.http.GET
-import retrofit2.http.POST
-import retrofit2.http.DELETE
-import retrofit2.http.Path
-import retrofit2.http.Body
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
+import retrofit2.http.*
 
 interface RecipeService {
     @GET("recipes")
     suspend fun getRecipes(
-        @retrofit2.http.Query("category_id") categoryId: String? = null,
-        @retrofit2.http.Query("kitchen_id") kitchenId: String? = null,
-        @retrofit2.http.Query("cooking_id") cookingId: String? = null,
-        @retrofit2.http.Query("celebration_id") celebrationId: String? = null
+        @Query("category_id") categoryId: String? = null,
+        @Query("kitchen_id") kitchenId: String? = null,
+        @Query("cooking_id") cookingId: String? = null,
+        @Query("celebration_id") celebrationId: String? = null,
+        @Query("search") search: String? = null
     ): List<Recipe>
 
     @GET("recipes/{id}")
     suspend fun getRecipeById(@Path("id") id: String): Recipe
+
+    @POST("recipes")
+    suspend fun createRecipe(@Body request: CreateRecipeRequest): Recipe
+
+    @PUT("recipes/{id}")
+    suspend fun updateRecipe(@Path("id") id: String, @Body request: Map<String, Any>): Recipe
+
+    @DELETE("recipes/{id}")
+    suspend fun deleteRecipe(@Path("id") id: String)
 
     @POST("recipes/{id}/like")
     suspend fun likeRecipe(@Path("id") id: String)
@@ -36,7 +42,7 @@ interface RecipeService {
     suspend fun getCategories(): List<Category>
 
     @GET("meta/kitchens")
-    suspend fun getKitchens(): List<Category> // Using same Category model as it's id+name
+    suspend fun getKitchens(): List<Category>
 
     @GET("meta/cooking-types")
     suspend fun getCookingTypes(): List<Category>
@@ -44,15 +50,13 @@ interface RecipeService {
     @GET("meta/celebrations")
     suspend fun getCelebrations(): List<Category>
 
-    companion object {
-        private const val BASE_URL = "http://188.233.238.70:5000/"
+    @GET("meta/ingredients")
+    suspend fun getIngredients(@Query("search") search: String? = null): List<Ingredient>
 
-        fun create(): RecipeService {
-            return Retrofit.Builder()
-                .baseUrl(BASE_URL)
-                .addConverterFactory(GsonConverterFactory.create())
-                .build()
-                .create(RecipeService::class.java)
-        }
-    }
+    @Multipart
+    @POST("upload")
+    suspend fun uploadImage(
+        @Part image: MultipartBody.Part,
+        @Part("folder") folder: RequestBody
+    ): UploadResponse
 }
