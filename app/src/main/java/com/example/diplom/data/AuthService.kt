@@ -27,10 +27,22 @@ data class RegisterResponse(
     val userId: Int
 )
 
+data class VerifyEmailRequest(
+    val email: String,
+    val code: String
+)
+
+data class VerifyEmailResponse(
+    val message: String
+)
+
 interface AuthService {
     @POST("auth/login")
     suspend fun login(@Body request: AuthRequest): AuthResponse
 
     @POST("auth/register")
     suspend fun register(@Body request: RegisterRequest): RegisterResponse
+
+    @POST("auth/verify-email")
+    suspend fun verifyEmail(@Body request: VerifyEmailRequest): VerifyEmailResponse
 }

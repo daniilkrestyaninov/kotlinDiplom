@@ -1,4 +1,4 @@
-package com.example.diplom
+﻿package com.example.diplom
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -122,7 +122,7 @@ fun FavoriteRecipeCard(recipe: Recipe, onClick: () -> Unit, onRemove: () -> Unit
         ) {
             if (!recipe.imageUrl.isNullOrEmpty()) {
                 AsyncImage(
-                    model = recipe.imageUrl,
+                    model = normalizeImageUrl(recipe.imageUrl),
                     contentDescription = recipe.title,
                     modifier = Modifier
                         .size(80.dp)

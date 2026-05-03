@@ -19,6 +19,7 @@ import com.example.diplom.UmamiSearchScreen
 import com.example.diplom.UmamiProfileScreen
 import com.example.diplom.UmamiRecipeDetailScreen
 import com.example.diplom.UmamiChatScreen
+import com.example.diplom.UmamiUserDetailScreen
 import com.example.diplom.AuthModal
 import com.example.diplom.AddRecipeScreen
 import com.example.diplom.UmamiFavoritesScreen
@@ -40,8 +41,10 @@ object Routes {
     const val RECIPE_DETAIL = "recipe_detail/{recipeId}?tab={tab}"
     const val CHAT = "chat"
     const val ADD_RECIPE = "add_recipe"
+    const val USER_DETAIL = "user_detail/{userId}"
     
     fun recipeDetail(recipeId: String, tab: String = "") = "recipe_detail/$recipeId?tab=$tab"
+    fun userDetail(userId: String) = "user_detail/$userId"
 }
 
 @Composable
@@ -146,6 +149,13 @@ fun UmamiApp(tokenManager: TokenManager) {
                 } else {
                     UmamiChatScreen(navController = navController)
                 }
+            }
+            composable(
+                route = Routes.USER_DETAIL,
+                arguments = listOf(navArgument("userId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val userId = backStackEntry.arguments?.getString("userId") ?: ""
+                UmamiUserDetailScreen(navController = navController, userId = userId, currentUserId = currentUserId)
             }
         }
         

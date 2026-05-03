@@ -37,6 +37,7 @@ class RecipeViewModel : ViewModel() {
     var selectedKitchenId by mutableStateOf<String?>(null)
     var selectedCookingId by mutableStateOf<String?>(null)
     var selectedCelebrationId by mutableStateOf<String?>(null)
+    var searchQuery by mutableStateOf("")
 
     private val service = ApiClient.recipeService
 
@@ -74,7 +75,8 @@ class RecipeViewModel : ViewModel() {
                     categoryId = selectedCategoryId,
                     kitchenId = selectedKitchenId,
                     cookingId = selectedCookingId,
-                    celebrationId = selectedCelebrationId
+                    celebrationId = selectedCelebrationId,
+                    search = searchQuery.takeIf { it.isNotBlank() }
                 )
                 _state.value = RecipeState.Success(recipes)
             } catch (e: Exception) {
@@ -84,6 +86,7 @@ class RecipeViewModel : ViewModel() {
     }
 
     fun toggleLike(recipeId: String, isCurrentlyLiked: Boolean, currentUserId: String? = null) {
+        if (currentUserId.isNullOrBlank()) return
         val currentState = _state.value
         if (currentState is RecipeState.Success) {
             val updatedRecipes = currentState.recipes.map { recipe ->
@@ -92,7 +95,7 @@ class RecipeViewModel : ViewModel() {
                     val newLikes = if (isCurrentlyLiked) {
                         currentLikes.filter { it.userId != currentUserId }
                     } else {
-                        if (currentUserId != null) currentLikes + RecipeLike(currentUserId) else currentLikes
+                        currentLikes + RecipeLike(currentUserId)
                     }
                     recipe.copy(
                         isLiked = !isCurrentlyLiked,

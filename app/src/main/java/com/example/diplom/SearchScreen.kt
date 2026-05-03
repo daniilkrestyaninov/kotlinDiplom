@@ -23,7 +23,7 @@ import com.example.diplom.ui.theme.UmamiOrange
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UmamiSearchScreen(navController: NavController, currentUserId: String? = null, viewModel: RecipeViewModel = viewModel()) {
-    var searchQuery by remember { mutableStateOf("") }
+    var searchQuery by remember { mutableStateOf(viewModel.searchQuery) }
     val state by viewModel.state
 
     LazyColumn(
@@ -43,7 +43,10 @@ fun UmamiSearchScreen(navController: NavController, currentUserId: String? = nul
         item {
             OutlinedTextField(
                 value = searchQuery,
-                onValueChange = { searchQuery = it },
+                onValueChange = {
+                    searchQuery = it
+                    viewModel.searchQuery = it
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp),
@@ -51,7 +54,7 @@ fun UmamiSearchScreen(navController: NavController, currentUserId: String? = nul
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray) },
                 trailingIcon = {
                     Button(
-                        onClick = { /* TODO: Search action */ },
+                        onClick = { viewModel.fetchRecipes() },
                         colors = ButtonDefaults.buttonColors(containerColor = com.example.diplom.ui.theme.UmamiGreen),
                         modifier = Modifier.padding(end = 4.dp).height(36.dp),
                         contentPadding = PaddingValues(horizontal = 12.dp)

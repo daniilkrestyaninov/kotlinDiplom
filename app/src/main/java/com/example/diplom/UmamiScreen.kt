@@ -1,4 +1,4 @@
-package com.example.diplom
+﻿package com.example.diplom
 
 import com.example.diplom.R
 
@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -121,7 +122,7 @@ fun UmamiTopBar(
         title = {
             Image(
                 painter = painterResource(id = R.drawable.logo),
-                contentDescription = "УМАМИ Logo",
+                contentDescription = "UMAMI Logo",
                 modifier = Modifier
                     .width(100.dp) // Adjusted width
                     .height(20.dp),
@@ -160,7 +161,7 @@ fun UmamiTopBar(
                     Spacer(modifier = Modifier.width(8.dp))
                     Icon(
                         imageVector = Icons.Default.Person,
-                        contentDescription = "Profile",
+                        contentDescription = "Профиль",
                         tint = Color.White,
                         modifier = Modifier.size(16.dp)
                     )
@@ -399,8 +400,8 @@ fun RecipePostCard(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     AsyncImage(
-                        model = recipe.User?.avatarUrl ?: R.drawable.ic_avatar,
-                        contentDescription = "User",
+                        model = com.example.diplom.data.normalizeImageUrl(recipe.User?.avatarUrl) ?: R.drawable.ic_avatar,
+                        contentDescription = "Пользователь",
                         modifier = Modifier
                             .size(45.dp)
                             .clip(CircleShape),
@@ -408,7 +409,13 @@ fun RecipePostCard(
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     Column {
-                        Text(recipe.User?.name ?: "Anonymous", fontWeight = FontWeight.Bold, fontFamily = InterFontFamily)
+                        Text(
+                            recipe.User?.name ?: "Anonymous",
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = InterFontFamily,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                         Text("@${recipe.User?.username ?: "unknown"}", fontSize = 12.sp, color = Color.Gray, fontFamily = InterFontFamily)
                     }
                 }
@@ -416,9 +423,9 @@ fun RecipePostCard(
                     onClick = { },
                     colors = ButtonDefaults.buttonColors(containerColor = UmamiGreen),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                    modifier = Modifier.height(36.dp)
+                    modifier = Modifier.width(112.dp).height(36.dp)
                 ) {
-                    Text("Подписаться", fontSize = 12.sp, fontFamily = InterFontFamily)
+                    Text("Подписаться", fontSize = 12.sp, fontFamily = InterFontFamily, maxLines = 1)
                 }
             }
 
@@ -432,7 +439,7 @@ fun RecipePostCard(
                     .clip(RoundedCornerShape(16.dp))
             ) {
                 AsyncImage(
-                    model = recipe.imageUrl ?: R.drawable.img_pasta,
+                    model = com.example.diplom.data.normalizeImageUrl(recipe.imageUrl) ?: R.drawable.img_pasta,
                     contentDescription = recipe.title,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
@@ -555,7 +562,7 @@ fun CommentPreview(comment: com.example.diplom.data.Comment) {
             modifier = Modifier.fillMaxWidth()
         ) {
             AsyncImage(
-                model = comment.author?.avatarUrl ?: R.drawable.ic_avatar,
+                model = com.example.diplom.data.normalizeImageUrl(comment.author?.avatarUrl) ?: R.drawable.ic_avatar,
                 contentDescription = null,
                 modifier = Modifier
                     .size(32.dp)
@@ -667,3 +674,20 @@ fun AddRecipeFab(onClick: () -> Unit = {}) {
         Icon(Icons.Default.Add, contentDescription = "Add", modifier = Modifier.size(30.dp))
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

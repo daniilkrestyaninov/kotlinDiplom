@@ -1,4 +1,4 @@
-package com.example.diplom
+﻿package com.example.diplom
 
 import android.Manifest
 import android.content.Context
@@ -9,6 +9,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -43,6 +44,13 @@ data class StepData(
     var description: String = "",
     var imageUri: Uri? = null,
     var uploadedUrl: String? = null
+)
+
+data class SelectedIngredientUi(
+    val id: Int,
+    val name: String,
+    val quantity: String = "",
+    val note: String = ""
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -82,7 +90,7 @@ fun AddRecipeScreen(navController: NavController) {
 
     // Ingredient selection
     var ingredientSearch by remember { mutableStateOf("") }
-    var selectedIngredients by remember { mutableStateOf<List<IngredientInput>>(emptyList()) }
+    var selectedIngredients by remember { mutableStateOf<List<SelectedIngredientUi>>(emptyList()) }
     var showIngredientDialog by remember { mutableStateOf(false) }
 
     var isLoading by remember { mutableStateOf(false) }
@@ -152,6 +160,7 @@ fun AddRecipeScreen(navController: NavController) {
             kitchens = service.getKitchens()
             cookingTypes = service.getCookingTypes()
             celebrations = service.getCelebrations()
+            ingredients = service.getIngredients()
         } catch (e: Exception) {
             android.util.Log.e("AddRecipe", "Failed to load metadata", e)
         }
@@ -219,12 +228,54 @@ fun AddRecipeScreen(navController: NavController) {
                     contentAlignment = Alignment.Center
                 ) {
                     if (mainImageUri != null) {
-                        AsyncImage(
-                            model = mainImageUri,
-                            contentDescription = "Recipe photo",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            AsyncImage(
+                                model = mainImageUri,
+                                contentDescription = "Recipe photo",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                            // Aspect Ratio Guide Overlay
+                            Canvas(modifier = Modifier.fillMaxSize()) {
+                                val strokeWidth = 2.dp.toPx()
+                                val rectWidth = size.width
+                                val rectHeight = size.height
+                                
+                                // Draw darkened corners to show the crop area
+                                // The card uses a specific height, so we simulate that
+                                drawRect(
+                                    color = Color.Black.copy(alpha = 0.3f),
+                                    size = size
+                                )
+                                
+                                // Clear the center area (visual guide)
+                                drawRect(
+                                    color = Color.Transparent,
+                                    blendMode = androidx.compose.ui.graphics.BlendMode.Clear
+                                )
+                            }
+                            
+                            // Border for the guide
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .border(2.dp, Color.White.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                            )
+                            
+                            Surface(
+                                modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color.Black.copy(alpha = 0.6f)
+                            ) {
+                                Text(
+                                    "Зона видимости",
+                                    color = Color.White,
+                                    fontSize = 10.sp,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    fontFamily = InterFontFamily
+                                )
+                            }
+                        }
                     } else {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(Icons.Default.AddAPhoto, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(48.dp))
@@ -349,6 +400,78 @@ fun AddRecipeScreen(navController: NavController) {
                 MetaDropdown(label = "Праздник", items = celebrations, selectedId = selectedCelebrationId, onSelect = { selectedCelebrationId = it })
             }
 
+            // Ingredients
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Ингредиенты", fontWeight = FontWeight.Bold, fontFamily = InterFontFamily, fontSize = 16.sp)
+                    TextButton(onClick = { showIngredientDialog = true }) {
+                        Icon(Icons.Default.Add, contentDescription = null, tint = UmamiOrange)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Добавить", color = UmamiOrange)
+                    }
+                }
+            }
+
+            if (selectedIngredients.isEmpty()) {
+                item {
+                    Text("Добавьте хотя бы один ингредиент", color = Color.Gray, fontFamily = InterFontFamily, fontSize = 12.sp)
+                }
+            } else {
+                itemsIndexed(selectedIngredients) { index, ing ->
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = Color(0xFFF9F9F9),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(ing.name, fontWeight = FontWeight.Bold, fontFamily = InterFontFamily)
+                                IconButton(onClick = {
+                                    selectedIngredients = selectedIngredients.toMutableList().also { it.removeAt(index) }
+                                }, modifier = Modifier.size(24.dp)) {
+                                    Icon(Icons.Default.Close, contentDescription = "Удалить", tint = Color.Gray, modifier = Modifier.size(16.dp))
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedTextField(
+                                    value = ing.quantity,
+                                    onValueChange = { q ->
+                                        selectedIngredients = selectedIngredients.toMutableList().also {
+                                            it[index] = it[index].copy(quantity = q)
+                                        }
+                                    },
+                                    label = { Text("Количество") },
+                                    modifier = Modifier.weight(1f),
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                                OutlinedTextField(
+                                    value = ing.note,
+                                    onValueChange = { n ->
+                                        selectedIngredients = selectedIngredients.toMutableList().also {
+                                            it[index] = it[index].copy(note = n)
+                                        }
+                                    },
+                                    label = { Text("Примечание") },
+                                    modifier = Modifier.weight(1f),
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             // Steps
             item {
                 Row(
@@ -453,6 +576,14 @@ fun AddRecipeScreen(navController: NavController) {
                             Toast.makeText(context, "Укажите количество порций", Toast.LENGTH_SHORT).show()
                             return@Button
                         }
+                        if (steps.none { it.description.isNotBlank() }) {
+                            Toast.makeText(context, "Добавьте хотя бы один шаг", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+                        if (selectedIngredients.isEmpty()) {
+                            Toast.makeText(context, "Добавьте хотя бы один ингредиент", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
                         isLoading = true
                         scope.launch {
                             try {
@@ -495,7 +626,13 @@ fun AddRecipeScreen(navController: NavController) {
                                     kitchenId = selectedKitchenId?.toIntOrNull(),
                                     celebrationId = selectedCelebrationId?.toIntOrNull(),
                                     cookingId = selectedCookingId?.toIntOrNull(),
-                                    ingredients = selectedIngredients,
+                                    ingredients = selectedIngredients.map {
+                                        IngredientInput(
+                                            id = it.id,
+                                            quantity = it.quantity.takeIf { q -> q.isNotBlank() },
+                                            note = it.note.takeIf { n -> n.isNotBlank() }
+                                        )
+                                    },
                                     steps = stepInputs,
                                     categories = selectedCategoryIds.mapNotNull { it.toIntOrNull() }
                                 )
@@ -534,6 +671,63 @@ fun AddRecipeScreen(navController: NavController) {
                     }
                 }
             }
+        }
+
+        // Image source dialog
+        if (showIngredientDialog) {
+            AlertDialog(
+                onDismissRequest = { showIngredientDialog = false },
+                title = { Text("Выбор ингредиентов", fontFamily = InterFontFamily, fontWeight = FontWeight.Bold) },
+                text = {
+                    Column {
+                        OutlinedTextField(
+                            value = ingredientSearch,
+                            onValueChange = { ingredientSearch = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text("Поиск ингредиента...") },
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        val filtered = ingredients.filter {
+                            it.name.contains(ingredientSearch, ignoreCase = true)
+                        }.take(30)
+                        LazyColumn(modifier = Modifier.heightIn(max = 280.dp)) {
+                            items(filtered) { ing ->
+                                val idInt = ing.id.toIntOrNull()
+                                if (idInt != null) {
+                                    val alreadyAdded = selectedIngredients.any { it.id == idInt }
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+                                                if (!alreadyAdded) {
+                                                    selectedIngredients = selectedIngredients + SelectedIngredientUi(
+                                                        id = idInt,
+                                                        name = ing.name
+                                                    )
+                                                }
+                                            }
+                                            .padding(vertical = 8.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(ing.name, fontFamily = InterFontFamily)
+                                        if (alreadyAdded) {
+                                            Text("Добавлено", color = UmamiOrange, fontSize = 12.sp)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showIngredientDialog = false }) {
+                        Text("Готово", color = UmamiOrange)
+                    }
+                }
+            )
         }
 
         // Image source dialog
@@ -615,3 +809,14 @@ private fun createTempImageUri(context: Context): Uri {
     val file = File(imagesDir, "camera_${System.currentTimeMillis()}.jpg")
     return FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
 }
+
+
+
+
+
+
+
+
+
+
+

@@ -31,10 +31,22 @@ class RecipeDetailViewModel : ViewModel() {
         }
     }
 
-    fun postComment(recipeId: String, text: String, rating: Int?) {
+    fun postComment(
+        recipeId: String,
+        text: String,
+        rating: Int?,
+        tasteSweet: Int?,
+        tasteSour: Int?,
+        tasteSalty: Int?,
+        tasteSpicy: Int?,
+        tasteUmami: Int?
+    ) {
         viewModelScope.launch {
             try {
-                recipeService.postComment(recipeId, CommentRequest(text, rating))
+                recipeService.postComment(
+                    recipeId,
+                    CommentRequest(text, rating, tasteSweet, tasteSour, tasteSalty, tasteSpicy, tasteUmami)
+                )
                 // Reload recipe and comments to get fresh data
                 val currentState = _state.value
                 if (currentState is RecipeDetailState.Success) {
@@ -49,6 +61,7 @@ class RecipeDetailViewModel : ViewModel() {
     }
     
     fun toggleLike(recipeId: String, isCurrentlyLiked: Boolean, currentUserId: String?) {
+        if (currentUserId.isNullOrBlank()) return
         val currentState = _state.value
         if (currentState is RecipeDetailState.Success) {
             // Optimistic update: toggle the like state
@@ -56,7 +69,7 @@ class RecipeDetailViewModel : ViewModel() {
             val newLikes = if (isCurrentlyLiked) {
                 currentLikes.filter { it.userId != currentUserId }
             } else {
-                if (currentUserId != null) currentLikes + RecipeLike(currentUserId) else currentLikes
+                currentLikes + RecipeLike(currentUserId)
             }
             
             val updatedRecipe = currentState.recipe.copy(

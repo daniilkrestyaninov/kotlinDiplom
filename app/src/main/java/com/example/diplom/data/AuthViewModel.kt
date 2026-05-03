@@ -1,4 +1,4 @@
-package com.example.diplom.data
+﻿package com.example.diplom.data
 
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
@@ -9,6 +9,7 @@ import kotlinx.coroutines.launch
 sealed class AuthState {
     object Idle : AuthState()
     object Loading : AuthState()
+    data class VerificationRequired(val email: String, val password: String) : AuthState()
     data class Success(val user: User) : AuthState()
     data class Error(val message: String) : AuthState()
 }
@@ -31,8 +32,7 @@ class AuthViewModel(private val tokenManager: TokenManager) : ViewModel() {
                     try {
                         val user = userService.getMyProfile()
                         _state.value = AuthState.Success(user)
-                    } catch (e: Exception) {
-                        // Token might be invalid
+                    } catch (_: Exception) {
                         tokenManager.deleteToken()
                         _state.value = AuthState.Idle
                     }
@@ -61,16 +61,31 @@ class AuthViewModel(private val tokenManager: TokenManager) : ViewModel() {
             _state.value = AuthState.Loading
             try {
                 service.register(RegisterRequest(username, name, email, pass))
-                // Автоматический вход после успешной регистрации
-                val res = service.login(AuthRequest(email, pass))
-                tokenManager.saveToken(res.token)
-                _state.value = AuthState.Success(res.user)
+                _state.value = AuthState.VerificationRequired(email = email, password = pass)
             } catch (e: Exception) {
                 _state.value = AuthState.Error(e.message ?: "Registration failed")
             }
         }
     }
-    
+
+    fun verifyEmail(email: String, code: String, passwordForAutoLogin: String? = null) {
+        viewModelScope.launch {
+            _state.value = AuthState.Loading
+            try {
+                service.verifyEmail(VerifyEmailRequest(email, code))
+                if (!passwordForAutoLogin.isNullOrBlank()) {
+                    val res = service.login(AuthRequest(email, passwordForAutoLogin))
+                    tokenManager.saveToken(res.token)
+                    _state.value = AuthState.Success(res.user)
+                } else {
+                    _state.value = AuthState.Idle
+                }
+            } catch (e: Exception) {
+                _state.value = AuthState.Error(e.message ?: "Email verification failed")
+            }
+        }
+    }
+
     fun logout() {
         viewModelScope.launch {
             tokenManager.deleteToken()
