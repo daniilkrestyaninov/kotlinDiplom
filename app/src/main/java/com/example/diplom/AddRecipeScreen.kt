@@ -1,4 +1,4 @@
-﻿package com.example.diplom
+package com.example.diplom
 
 import android.Manifest
 import android.content.Context
@@ -47,11 +47,14 @@ data class StepData(
 )
 
 data class SelectedIngredientUi(
-    val id: Int,
+    val id: Int? = null,
     val name: String,
     val quantity: String = "",
+    val unit: String = "",
     val note: String = ""
 )
+
+val UNIT_OPTIONS = listOf("г", "кг", "мл", "л", "шт", "ст. л.", "ч. л.", "стакан", "зубчик", "щепотка", "по вкусу")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -449,10 +452,19 @@ fun AddRecipeScreen(navController: NavController) {
                                             it[index] = it[index].copy(quantity = q)
                                         }
                                     },
-                                    label = { Text("Количество") },
-                                    modifier = Modifier.weight(1f),
+                                    label = { Text("Кол-во", fontSize = 12.sp) },
+                                    modifier = Modifier.weight(0.7f),
                                     singleLine = true,
                                     shape = RoundedCornerShape(12.dp)
+                                )
+                                UnitDropdown(
+                                    selectedUnit = ing.unit,
+                                    onSelect = { u ->
+                                        selectedIngredients = selectedIngredients.toMutableList().also {
+                                            it[index] = it[index].copy(unit = u)
+                                        }
+                                    },
+                                    modifier = Modifier.weight(0.9f)
                                 )
                                 OutlinedTextField(
                                     value = ing.note,
@@ -461,8 +473,8 @@ fun AddRecipeScreen(navController: NavController) {
                                             it[index] = it[index].copy(note = n)
                                         }
                                     },
-                                    label = { Text("Примечание") },
-                                    modifier = Modifier.weight(1f),
+                                    label = { Text("Прим.", fontSize = 12.sp) },
+                                    modifier = Modifier.weight(1.1f),
                                     singleLine = true,
                                     shape = RoundedCornerShape(12.dp)
                                 )
@@ -629,7 +641,9 @@ fun AddRecipeScreen(navController: NavController) {
                                     ingredients = selectedIngredients.map {
                                         IngredientInput(
                                             id = it.id,
+                                            name = if (it.id == null) it.name else null,
                                             quantity = it.quantity.takeIf { q -> q.isNotBlank() },
+                                            unit = it.unit.takeIf { u -> u.isNotBlank() },
                                             note = it.note.takeIf { n -> n.isNotBlank() }
                                         )
                                     },
@@ -693,6 +707,26 @@ fun AddRecipeScreen(navController: NavController) {
                             it.name.contains(ingredientSearch, ignoreCase = true)
                         }.take(30)
                         LazyColumn(modifier = Modifier.heightIn(max = 280.dp)) {
+                            if (ingredientSearch.isNotBlank() && filtered.none { it.name.equals(ingredientSearch, ignoreCase = true) }) {
+                                item {
+                                    TextButton(
+                                        onClick = {
+                                            if (selectedIngredients.none { it.name.equals(ingredientSearch, ignoreCase = true) }) {
+                                                selectedIngredients = selectedIngredients + SelectedIngredientUi(
+                                                    id = null,
+                                                    name = ingredientSearch.trim()
+                                                )
+                                            }
+                                            ingredientSearch = ""
+                                        },
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Icon(Icons.Default.Add, contentDescription = null, tint = UmamiOrange)
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Добавить \"$ingredientSearch\"", color = UmamiOrange)
+                                    }
+                                }
+                            }
                             items(filtered) { ing ->
                                 val idInt = ing.id.toIntOrNull()
                                 if (idInt != null) {
@@ -768,6 +802,45 @@ fun AddRecipeScreen(navController: NavController) {
                     }
                 }
             )
+        }
+    }
+}
+
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun UnitDropdown(selectedUnit: String, onSelect: (String) -> Unit, modifier: Modifier = Modifier) {
+    var expanded by remember { mutableStateOf(false) }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = !expanded },
+        modifier = modifier
+    ) {
+        OutlinedTextField(
+            value = selectedUnit,
+            onValueChange = { onSelect(it) },
+            label = { Text("Ед. изм.", fontSize = 12.sp) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier.menuAnchor().fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            singleLine = true,
+            textStyle = LocalTextStyle.current.copy(fontSize = 14.sp)
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            UNIT_OPTIONS.forEach { unit ->
+                DropdownMenuItem(
+                    text = { Text(unit) },
+                    onClick = {
+                        onSelect(unit)
+                        expanded = false
+                    }
+                )
+            }
         }
     }
 }

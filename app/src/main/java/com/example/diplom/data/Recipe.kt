@@ -48,6 +48,7 @@ data class RecipeIngredient(
 
 data class IngredientPivot(
     val quantity: String? = null,
+    val unit: String? = null,
     val note: String? = null
 )
 
@@ -83,8 +84,10 @@ data class CreateRecipeRequest(
 )
 
 data class IngredientInput(
-    val id: Int,
+    val id: Int?,
+    val name: String? = null,
     val quantity: String?,
+    val unit: String?,
     val note: String?
 )
 

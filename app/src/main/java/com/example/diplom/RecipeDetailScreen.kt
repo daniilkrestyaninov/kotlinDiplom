@@ -1,4 +1,4 @@
-﻿package com.example.diplom
+package com.example.diplom
 
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -299,9 +299,10 @@ fun UmamiRecipeDetailScreen(
                                                         modifier = Modifier.weight(1f)
                                                     )
                                                     val qty = ingredient.pivot?.quantity ?: ""
+                                                    val unit = ingredient.pivot?.unit ?: ""
                                                     val note = ingredient.pivot?.note ?: ""
                                                     val detail = listOfNotNull(
-                                                        qty.takeIf { it.isNotBlank() },
+                                                        if (qty.isNotBlank()) "$qty $unit".trim() else null,
                                                         note.takeIf { it.isNotBlank() }
                                                     ).joinToString(" · ")
                                                     if (detail.isNotEmpty()) {
