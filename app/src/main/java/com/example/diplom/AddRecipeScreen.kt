@@ -231,54 +231,12 @@ fun AddRecipeScreen(navController: NavController) {
                     contentAlignment = Alignment.Center
                 ) {
                     if (mainImageUri != null) {
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            AsyncImage(
-                                model = mainImageUri,
-                                contentDescription = "Recipe photo",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                            // Aspect Ratio Guide Overlay
-                            Canvas(modifier = Modifier.fillMaxSize()) {
-                                val strokeWidth = 2.dp.toPx()
-                                val rectWidth = size.width
-                                val rectHeight = size.height
-                                
-                                // Draw darkened corners to show the crop area
-                                // The card uses a specific height, so we simulate that
-                                drawRect(
-                                    color = Color.Black.copy(alpha = 0.3f),
-                                    size = size
-                                )
-                                
-                                // Clear the center area (visual guide)
-                                drawRect(
-                                    color = Color.Transparent,
-                                    blendMode = androidx.compose.ui.graphics.BlendMode.Clear
-                                )
-                            }
-                            
-                            // Border for the guide
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .border(2.dp, Color.White.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
-                            )
-                            
-                            Surface(
-                                modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp),
-                                shape = RoundedCornerShape(12.dp),
-                                color = Color.Black.copy(alpha = 0.6f)
-                            ) {
-                                Text(
-                                    "Зона видимости",
-                                    color = Color.White,
-                                    fontSize = 10.sp,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                    fontFamily = InterFontFamily
-                                )
-                            }
-                        }
+                        AsyncImage(
+                            model = mainImageUri,
+                            contentDescription = "Recipe photo",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
                     } else {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(Icons.Default.AddAPhoto, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(48.dp))

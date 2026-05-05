@@ -18,16 +18,20 @@ object ApiClient {
     }
 
     private val authInterceptor = Interceptor { chain ->
-        val requestBuilder = chain.request().newBuilder()
-        
-        // Get token synchronously for the request
-        val token = runBlocking { tokenManager?.getToken?.first() }
-        
-        if (!token.isNullOrEmpty()) {
-            requestBuilder.addHeader("Authorization", "Bearer $token")
+        try {
+            val requestBuilder = chain.request().newBuilder()
+            
+            // Get token synchronously for the request
+            val token = runBlocking { tokenManager?.getToken?.first() }
+            
+            if (!token.isNullOrEmpty()) {
+                requestBuilder.addHeader("Authorization", "Bearer $token")
+            }
+            
+            chain.proceed(requestBuilder.build())
+        } catch (e: Exception) {
+            throw java.io.IOException(e.message ?: "Network error")
         }
-        
-        chain.proceed(requestBuilder.build())
     }
 
     private val client = OkHttpClient.Builder()

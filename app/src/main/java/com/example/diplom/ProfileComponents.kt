@@ -55,7 +55,7 @@ fun UserListDialog(title: String, users: List<User>, currentUserId: String?, onD
                 items(users) { u ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(modifier = Modifier.size(40.dp).clip(CircleShape).background(UmamiOrange.copy(alpha = 0.1f)), contentAlignment = Alignment.Center) {
-                            if (u.avatarUrl != null) AsyncImage(model = u.avatarUrl, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                            if (u.avatarUrl != null) AsyncImage(model = normalizeImageUrl(u.avatarUrl), contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                             else Icon(Icons.Default.Person, contentDescription = null, tint = UmamiOrange)
                         }
                         Spacer(modifier = Modifier.width(12.dp))
@@ -82,14 +82,14 @@ fun RecipePostCard(recipe: Recipe, navController: NavController, currentUserId: 
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(modifier = Modifier.size(32.dp).clip(CircleShape).background(Color.LightGray)) {
-                    if (recipe.User?.avatarUrl != null) AsyncImage(model = recipe.User.avatarUrl, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                    if (recipe.User?.avatarUrl != null) AsyncImage(model = normalizeImageUrl(recipe.User.avatarUrl), contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(recipe.User?.name ?: recipe.User?.username ?: "Автор", fontWeight = FontWeight.Bold, fontSize = 14.sp)
             }
             Spacer(modifier = Modifier.height(12.dp))
             Box(modifier = Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFFF5F5F5)), contentAlignment = Alignment.Center) {
-                if (recipe.imageUrl != null) AsyncImage(model = recipe.imageUrl, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                if (recipe.imageUrl != null) AsyncImage(model = normalizeImageUrl(recipe.imageUrl), contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                 else Text("Место для фото", color = Color.Gray)
             }
             Spacer(modifier = Modifier.height(12.dp))

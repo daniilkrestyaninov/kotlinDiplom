@@ -62,7 +62,8 @@ data class User(
 data class Category(
     val id: String,
     val name: String,
-    val description: String? = null
+    val description: String? = null,
+    @SerializedName("image_url") val imageUrl: String? = null
 )
 
 // Request models for creating recipes

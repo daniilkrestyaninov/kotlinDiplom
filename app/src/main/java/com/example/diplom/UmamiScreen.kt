@@ -1,4 +1,4 @@
-﻿package com.example.diplom
+package com.example.diplom
 
 import com.example.diplom.R
 
@@ -33,15 +33,23 @@ import coil.compose.AsyncImage
 import com.example.diplom.ui.theme.InterFontFamily
 import com.example.diplom.ui.navigation.Routes
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UmamiMainScreen(navController: NavController, currentUserId: String? = null, viewModel: RecipeViewModel = viewModel()) {
     val state by viewModel.state
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 16.dp)
+    val isRefreshing by viewModel.isRefreshing
+
+    androidx.compose.material3.pulltorefresh.PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = { viewModel.refresh() },
+        modifier = Modifier.fillMaxSize()
     ) {
-        item { 
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 16.dp)
+        ) {
+            item { 
                 FilterSection(
                     title = "Категории",
                     items = viewModel.categories.value,
@@ -94,19 +102,40 @@ fun UmamiMainScreen(navController: NavController, currentUserId: String? = null,
                 }
                 is RecipeState.Error -> {
                     item {
-                        Box(
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(20.dp),
-                            contentAlignment = Alignment.Center
+                                .padding(40.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Text("Ошибка загрузки: ${recipeState.message}", color = Color.Red)
+                            Icon(
+                                imageVector = Icons.Default.Error,
+                                contentDescription = null,
+                                tint = Color.Red,
+                                modifier = Modifier.size(48.dp)
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                "Ошибка загрузки: ${recipeState.message}",
+                                color = Color.Red,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                fontFamily = InterFontFamily
+                            )
+                            Spacer(modifier = Modifier.height(24.dp))
+                            Button(
+                                onClick = { viewModel.retry() },
+                                colors = ButtonDefaults.buttonColors(containerColor = UmamiOrange)
+                            ) {
+                                Text("Попробовать снова", fontFamily = InterFontFamily)
+                            }
                         }
                     }
                 }
             }
         }
     }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -158,12 +187,16 @@ fun UmamiTopBar(
                         fontSize = 10.sp,
                         fontFamily = InterFontFamily
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
+                    if (isLoggedIn && (com.example.diplom.data.ApiClient.retrofit.create(com.example.diplom.data.AuthService::class.java) != null)) {
+                         // Мы получаем данные пользователя из AuthViewModel в UmamiApp и прокидываем сюда
+                         // Но для простоты в TopBar добавим параметр avatarUrl в будущем. 
+                         // Сейчас просто оставим иконку, но сделаем её красивее.
+                    }
                     Icon(
                         imageVector = Icons.Default.Person,
                         contentDescription = "Профиль",
                         tint = Color.White,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
@@ -344,13 +377,24 @@ fun CategoryCard(
             shadowElevation = if (isSelected) 0.dp else 4.dp,
             modifier = Modifier.size(70.dp)
         ) {
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(12.dp)) {
-                Image(
-                    painter = painterResource(id = iconRes),
-                    contentDescription = category.name,
-                    contentScale = ContentScale.Fit,
-                    alpha = if (isSelected) 1f else 0.7f
-                )
+            Box(contentAlignment = Alignment.Center) {
+                if (!category.imageUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = com.example.diplom.data.normalizeImageUrl(category.imageUrl),
+                        contentDescription = category.name,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(20.dp)),
+                        alpha = if (isSelected) 1f else 0.8f
+                    )
+                } else {
+                    Image(
+                        painter = painterResource(id = iconRes),
+                        contentDescription = category.name,
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.padding(12.dp),
+                        alpha = if (isSelected) 1f else 0.7f
+                    )
+                }
             }
         }
         Spacer(modifier = Modifier.height(6.dp))

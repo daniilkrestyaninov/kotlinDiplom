@@ -19,6 +19,9 @@ class RecipeViewModel : ViewModel() {
     private val _state = mutableStateOf<RecipeState>(RecipeState.Loading)
     val state: State<RecipeState> = _state
 
+    private val _isRefreshing = mutableStateOf(false)
+    val isRefreshing: State<Boolean> = _isRefreshing
+
     // Metadata lists
     private val _categories = mutableStateOf<List<Category>>(emptyList())
     val categories: State<List<Category>> = _categories
@@ -40,6 +43,7 @@ class RecipeViewModel : ViewModel() {
     var searchQuery by mutableStateOf("")
 
     private val service = ApiClient.recipeService
+    private var fetchJob: kotlinx.coroutines.Job? = null
 
     init {
         initialFetch()
@@ -68,21 +72,47 @@ class RecipeViewModel : ViewModel() {
     }
 
     fun fetchRecipes() {
-        viewModelScope.launch {
-            _state.value = RecipeState.Loading
+        fetchJob?.cancel()
+        fetchJob = viewModelScope.launch {
+            // Если у нас уже есть данные, показываем индикатор обновления вместо полного экрана загрузки
+            if (_state.value is RecipeState.Success) {
+                _isRefreshing.value = true
+            } else {
+                _state.value = RecipeState.Loading
+            }
+            
             try {
-                val recipes = service.getRecipes(
-                    categoryId = selectedCategoryId,
-                    kitchenId = selectedKitchenId,
-                    cookingId = selectedCookingId,
-                    celebrationId = selectedCelebrationId,
-                    search = searchQuery.takeIf { it.isNotBlank() }
-                )
+                val recipes = if (searchQuery.isBlank() && selectedCategoryId == null && 
+                    selectedKitchenId == null && selectedCookingId == null && selectedCelebrationId == null) {
+                    // Используем рекомендации (бэк теперь сам рандомит выдачу на 1 странице)
+                    service.getRecommendations(page = 1, limit = 20)
+                } else {
+                    service.getRecipes(
+                        categoryId = selectedCategoryId,
+                        kitchenId = selectedKitchenId,
+                        cookingId = selectedCookingId,
+                        celebrationId = selectedCelebrationId,
+                        search = searchQuery.takeIf { it.isNotBlank() }
+                    )
+                }
                 _state.value = RecipeState.Success(recipes)
             } catch (e: Exception) {
-                _state.value = RecipeState.Error(e.message ?: "Unknown error")
+                android.util.Log.e("RecipeViewModel", "Fetch recipes failed", e)
+                if (_state.value !is RecipeState.Success) {
+                    _state.value = RecipeState.Error(e.message ?: "Unknown error")
+                }
+            } finally {
+                _isRefreshing.value = false
             }
         }
+    }
+
+    fun refresh() {
+        fetchRecipes()
+    }
+
+    fun retry() {
+        initialFetch()
     }
 
     fun toggleLike(recipeId: String, isCurrentlyLiked: Boolean, currentUserId: String? = null) {

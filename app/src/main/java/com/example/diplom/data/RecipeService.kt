@@ -14,6 +14,12 @@ interface RecipeService {
         @Query("search") search: String? = null
     ): List<Recipe>
 
+    @GET("recipes/recommendations")
+    suspend fun getRecommendations(
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 20
+    ): List<Recipe>
+
     @GET("recipes/{id}")
     suspend fun getRecipeById(@Path("id") id: String): Recipe
 
