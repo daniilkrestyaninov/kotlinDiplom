@@ -45,7 +45,9 @@ fun UmamiRecipeDetailScreen(
     var selectedTab by remember { mutableIntStateOf(if (initialTab == "comments") 3 else 0) }
     val tabs = listOf("Ингредиенты", "Шаги", "Питание", "Отзывы")
 
-    LaunchedEffect(recipeId) { viewModel.loadRecipe(recipeId) }
+    LaunchedEffect(recipeId, currentUserId) { 
+        viewModel.loadRecipe(recipeId, currentUserId) 
+    }
 
     var showFullScreenImage by remember { mutableStateOf<String?>(null) }
     val state by viewModel.state
@@ -165,7 +167,8 @@ fun UmamiRecipeDetailScreen(
 
                         if (recipe.User != null) {
                             Spacer(modifier = Modifier.height(12.dp))
-                            var isFollowing by remember { mutableStateOf(false) }
+                            val isFollowing = recipe.User.isFollowing ?: false
+                            
                             Surface(
                                 shape = RoundedCornerShape(16.dp),
                                 color = Color(0xFFF9F9F9),
@@ -187,7 +190,7 @@ fun UmamiRecipeDetailScreen(
                                             Text(recipe.User.username.firstOrNull()?.uppercase() ?: "?", fontWeight = FontWeight.Bold, color = UmamiOrange)
                                         }
                                     }
-
+ 
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
@@ -200,24 +203,21 @@ fun UmamiRecipeDetailScreen(
                                         )
                                         Text("@${recipe.User.username}", color = Color.Gray, fontFamily = InterFontFamily, fontSize = 12.sp)
                                     }
-
+ 
                                     if (currentUserId != null && recipe.User.id != currentUserId) {
                                         Button(
                                             onClick = {
-                                                scope.launch {
-                                                    try {
-                                                        if (isFollowing) ApiClient.userService.unfollow(recipe.User.id)
-                                                        else ApiClient.userService.follow(recipe.User.id)
-                                                        isFollowing = !isFollowing
-                                                    } catch (e: Exception) {
-                                                        android.util.Log.e("RecipeDetail", "Follow toggle failed", e)
-                                                    }
-                                                }
+                                                viewModel.toggleFollow(recipe.User.id, isFollowing)
                                             },
                                             shape = RoundedCornerShape(20.dp),
-                                            colors = ButtonDefaults.buttonColors(containerColor = if (isFollowing) Color.LightGray else UmamiOrange),
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = if (isFollowing) com.example.diplom.ui.theme.UmamiGreen.copy(alpha = 0.1f) else UmamiOrange,
+                                                contentColor = if (isFollowing) com.example.diplom.ui.theme.UmamiGreen else Color.White
+                                            ),
+                                            border = if (isFollowing) androidx.compose.foundation.BorderStroke(1.dp, com.example.diplom.ui.theme.UmamiGreen.copy(alpha = 0.3f)) else null,
                                             modifier = Modifier.width(112.dp).height(36.dp),
-                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                                            elevation = ButtonDefaults.buttonElevation(defaultElevation = if (isFollowing) 0.dp else 2.dp)
                                         ) {
                                             Text(
                                                 if (isFollowing) "Отписаться" else "Подписаться",

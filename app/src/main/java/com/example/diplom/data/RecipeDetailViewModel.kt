@@ -18,12 +18,23 @@ class RecipeDetailViewModel : ViewModel() {
 
     private val recipeService = ApiClient.recipeService
 
-    fun loadRecipe(id: String) {
+    fun loadRecipe(id: String, currentUserId: String? = null) {
         viewModelScope.launch {
             _state.value = RecipeDetailState.Loading
             try {
                 val recipe = recipeService.getRecipeById(id)
                 val comments = recipeService.getComments(id)
+                
+                // Проверяем, подписаны ли мы на автора
+                if (currentUserId != null) {
+                    try {
+                        val following = ApiClient.userService.getFollowing(currentUserId)
+                        recipe.User?.isFollowing = following.any { it.id == recipe.User?.id }
+                    } catch (e: Exception) {
+                        // Ignore
+                    }
+                }
+                
                 _state.value = RecipeDetailState.Success(recipe, comments)
             } catch (e: Exception) {
                 _state.value = RecipeDetailState.Error(e.message ?: "Failed to load recipe")
@@ -88,6 +99,28 @@ class RecipeDetailViewModel : ViewModel() {
                     }
                 } catch (e: Exception) {
                     android.util.Log.e("RecipeDetailViewModel", "Toggle like failed", e)
+                    _state.value = currentState
+                }
+            }
+        }
+    }
+
+    fun toggleFollow(authorId: String, isCurrentlyFollowing: Boolean) {
+        val currentState = _state.value
+        if (currentState is RecipeDetailState.Success) {
+            val updatedUser = currentState.recipe.User?.copy(isFollowing = !isCurrentlyFollowing)
+            val updatedRecipe = currentState.recipe.copy(User = updatedUser)
+            _state.value = currentState.copy(recipe = updatedRecipe)
+
+            viewModelScope.launch {
+                try {
+                    if (isCurrentlyFollowing) {
+                        ApiClient.userService.unfollow(authorId)
+                    } else {
+                        ApiClient.userService.follow(authorId)
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("RecipeDetailViewModel", "Toggle follow failed", e)
                     _state.value = currentState
                 }
             }

@@ -1,4 +1,4 @@
-﻿package com.example.diplom
+package com.example.diplom
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*

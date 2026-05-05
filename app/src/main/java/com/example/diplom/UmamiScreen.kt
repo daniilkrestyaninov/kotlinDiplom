@@ -29,6 +29,7 @@ import com.example.diplom.ui.theme.*
 import com.example.diplom.data.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import kotlinx.coroutines.launch
 import coil.compose.AsyncImage
 import com.example.diplom.ui.theme.InterFontFamily
 import com.example.diplom.ui.navigation.Routes
@@ -37,6 +38,11 @@ import com.example.diplom.ui.navigation.Routes
 @Composable
 fun UmamiMainScreen(navController: NavController, currentUserId: String? = null, viewModel: RecipeViewModel = viewModel()) {
     val state by viewModel.state
+    
+    LaunchedEffect(currentUserId) {
+        viewModel.currentUserId = currentUserId
+        viewModel.fetchRecipes(currentUserId)
+    }
 
     val isRefreshing by viewModel.isRefreshing
 
@@ -88,15 +94,17 @@ fun UmamiMainScreen(navController: NavController, currentUserId: String? = null,
                     }
                 }
                 is RecipeState.Success -> {
-                    items(recipeState.recipes) { recipe ->
+                    items(recipeState.recipes, key = { it.id }) { recipe ->
                         val isLiked = recipe.isLiked ?: recipe.likes?.any { it.userId == currentUserId } ?: false
                         val likesCount = recipe.likesCount ?: recipe.likes?.size ?: 0
                         
                         RecipePostCard(
                             recipe = recipe.copy(isLiked = isLiked, likesCount = likesCount),
-                            onClick = { navController.navigate("recipe_detail/${recipe.id}") },
+                            navController = navController,
+                            currentUserId = currentUserId,
                             onLikeClick = { viewModel.toggleLike(recipe.id, isLiked, currentUserId) },
-                            onCommentClick = { navController.navigate("recipe_detail/${recipe.id}?tab=comments") }
+                            onCommentClick = { navController.navigate("recipe_detail/${recipe.id}?tab=comments") },
+                            onFollowClick = { viewModel.toggleFollow(recipe.User!!.id) }
                         )
                     }
                 }
@@ -402,7 +410,6 @@ fun CategoryCard(
             category.name,
             fontSize = 11.sp,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
-            color = if (isSelected) UmamiOrange else Color.Gray,
             fontFamily = InterFontFamily,
             maxLines = 1
         )
@@ -412,11 +419,16 @@ fun CategoryCard(
 @Composable
 fun RecipePostCard(
     recipe: com.example.diplom.data.Recipe, 
-    onClick: () -> Unit, 
-    onLikeClick: () -> Unit,
-    onCommentClick: () -> Unit
+    navController: NavController,
+    currentUserId: String? = null,
+    onLikeClick: () -> Unit = {},
+    onCommentClick: () -> Unit = {},
+    onFollowClick: () -> Unit = {}
 ) {
+    val onClick = { navController.navigate(Routes.recipeDetail(recipe.id)) }
     var comments by remember { mutableStateOf<List<com.example.diplom.data.Comment>?>(null) }
+    
+    val scope = rememberCoroutineScope()
     
     LaunchedEffect(recipe.id) {
         try {
@@ -442,7 +454,7 @@ fun RecipePostCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                     AsyncImage(
                         model = com.example.diplom.data.normalizeImageUrl(recipe.User?.avatarUrl) ?: R.drawable.ic_avatar,
                         contentDescription = "Пользователь",
@@ -460,16 +472,19 @@ fun RecipePostCard(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        Text("@${recipe.User?.username ?: "unknown"}", fontSize = 12.sp, color = Color.Gray, fontFamily = InterFontFamily)
+                        Text("@${recipe.User?.username ?: "unknown"}", fontSize = 12.sp, color = Color.Gray, fontFamily = InterFontFamily, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
-                Button(
-                    onClick = { },
-                    colors = ButtonDefaults.buttonColors(containerColor = UmamiGreen),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                    modifier = Modifier.width(112.dp).height(36.dp)
-                ) {
-                    Text("Подписаться", fontSize = 12.sp, fontFamily = InterFontFamily, maxLines = 1)
+                Spacer(modifier = Modifier.width(8.dp))
+                if (currentUserId != null && recipe.User?.id != currentUserId && recipe.User?.isFollowing != true) {
+                    Button(
+                        onClick = { onFollowClick() },
+                        colors = ButtonDefaults.buttonColors(containerColor = UmamiGreen),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                        modifier = Modifier.width(112.dp).height(36.dp)
+                    ) {
+                        Text("Подписаться", fontSize = 12.sp, fontFamily = InterFontFamily, maxLines = 1)
+                    }
                 }
             }
 

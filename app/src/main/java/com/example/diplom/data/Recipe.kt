@@ -56,7 +56,8 @@ data class User(
     val id: String,
     val username: String,
     val name: String?,
-    @SerializedName("avatar_url") val avatarUrl: String?
+    @SerializedName("avatar_url") val avatarUrl: String?,
+    @SerializedName("is_following") var isFollowing: Boolean? = null
 )
 
 data class Category(

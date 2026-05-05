@@ -26,6 +26,11 @@ fun UmamiSearchScreen(navController: NavController, currentUserId: String? = nul
     var searchQuery by remember { mutableStateOf(viewModel.searchQuery) }
     val state by viewModel.state
 
+    LaunchedEffect(currentUserId) {
+        viewModel.currentUserId = currentUserId
+        viewModel.fetchRecipes(currentUserId)
+    }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 16.dp)
@@ -116,7 +121,8 @@ fun UmamiSearchScreen(navController: NavController, currentUserId: String? = nul
                     
                     RecipePostCard(
                         recipe = recipe.copy(isLiked = isLiked, likesCount = likesCount),
-                        onClick = { navController.navigate("recipe_detail/${recipe.id}") },
+                        navController = navController,
+                        currentUserId = currentUserId,
                         onLikeClick = { viewModel.toggleLike(recipe.id, isLiked, currentUserId) },
                         onCommentClick = { navController.navigate("recipe_detail/${recipe.id}?tab=comments") }
                     )

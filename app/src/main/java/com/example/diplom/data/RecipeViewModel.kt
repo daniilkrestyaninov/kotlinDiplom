@@ -41,6 +41,7 @@ class RecipeViewModel : ViewModel() {
     var selectedCookingId by mutableStateOf<String?>(null)
     var selectedCelebrationId by mutableStateOf<String?>(null)
     var searchQuery by mutableStateOf("")
+    var currentUserId: String? = null
 
     private val service = ApiClient.recipeService
     private var fetchJob: kotlinx.coroutines.Job? = null
@@ -71,7 +72,7 @@ class RecipeViewModel : ViewModel() {
         }
     }
 
-    fun fetchRecipes() {
+    fun fetchRecipes(currentUserId: String? = null) {
         fetchJob?.cancel()
         fetchJob = viewModelScope.launch {
             // Если у нас уже есть данные, показываем индикатор обновления вместо полного экрана загрузки
@@ -95,7 +96,22 @@ class RecipeViewModel : ViewModel() {
                         search = searchQuery.takeIf { it.isNotBlank() }
                     )
                 }
-                _state.value = RecipeState.Success(recipes)
+                
+                // Fetch following status if logged in
+                val uid = currentUserId
+                if (uid != null) {
+                    try {
+                        val following = ApiClient.userService.getFollowing(uid)
+                        val followingIds = following.map { it.id }.toSet()
+                        recipes.forEach { recipe ->
+                            recipe.User?.isFollowing = followingIds.contains(recipe.User?.id)
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("RecipeViewModel", "Following fetch failed", e)
+                    }
+                }
+                
+                _state.value = RecipeState.Success(recipes.toList())
             } catch (e: Exception) {
                 android.util.Log.e("RecipeViewModel", "Fetch recipes failed", e)
                 if (_state.value !is RecipeState.Success) {
@@ -171,5 +187,30 @@ class RecipeViewModel : ViewModel() {
     fun toggleCelebration(id: String) {
         selectedCelebrationId = if (selectedCelebrationId == id) null else id
         fetchRecipes()
+    }
+
+    fun toggleFollow(authorId: String) {
+        val currentState = _state.value
+        if (currentState is RecipeState.Success) {
+            // Создаем новый список с обновленными объектами
+            val updatedRecipes = currentState.recipes.map { recipe ->
+                if (recipe.User?.id == authorId) {
+                    // Глубокое копирование: создаем новый Recipe и новый User
+                    recipe.copy(User = recipe.User.copy(isFollowing = true))
+                } else {
+                    recipe
+                }
+            }
+            // Явно устанавливаем новое состояние
+            _state.value = RecipeState.Success(updatedRecipes.toList())
+
+            viewModelScope.launch {
+                try {
+                    ApiClient.userService.follow(authorId)
+                } catch (e: Exception) {
+                    android.util.Log.e("RecipeViewModel", "Follow failed for author $authorId", e)
+                }
+            }
+        }
     }
 }
