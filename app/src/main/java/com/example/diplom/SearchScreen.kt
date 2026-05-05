@@ -118,13 +118,25 @@ fun UmamiSearchScreen(navController: NavController, currentUserId: String? = nul
                 items(recipeState.recipes) { recipe ->
                     val isLiked = recipe.isLiked ?: recipe.likes?.any { it.userId == currentUserId } ?: false
                     val likesCount = recipe.likesCount ?: recipe.likes?.size ?: 0
-                    
+                    val isFavorited = recipe.isFavorited ?: false
+                    val context = androidx.compose.ui.platform.LocalContext.current
+
                     RecipePostCard(
-                        recipe = recipe.copy(isLiked = isLiked, likesCount = likesCount),
+                        recipe = recipe.copy(isLiked = isLiked, likesCount = likesCount, isFavorited = isFavorited),
                         navController = navController,
                         currentUserId = currentUserId,
-                        onLikeClick = { viewModel.toggleLike(recipe.id, isLiked, currentUserId) },
-                        onCommentClick = { navController.navigate("recipe_detail/${recipe.id}?tab=comments") }
+                        isFavorited = isFavorited,
+                        onLikeClick = { viewModel.toggleLike(recipe.id.toString(), isLiked, currentUserId) },
+                        onCommentClick = { navController.navigate("recipe_detail/${recipe.id}?tab=comments") },
+                        onFavoriteClick = {
+                            if (currentUserId.isNullOrBlank()) {
+                                android.widget.Toast.makeText(context, "Нужно войти в аккаунт", android.widget.Toast.LENGTH_SHORT).show()
+                            } else {
+                                viewModel.toggleFavorite(recipe.id, isFavorited)
+                                val msg = if (isFavorited) "Удалено из избранного" else "Добавлено в избранное"
+                                android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        }
                     )
                 }
             }

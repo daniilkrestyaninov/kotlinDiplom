@@ -74,7 +74,7 @@ fun UserListDialog(title: String, users: List<User>, currentUserId: String?, onD
 @Composable
 fun RecipePostCard(recipe: Recipe, navController: NavController, currentUserId: String?) {
     Surface(
-        modifier = Modifier.fillMaxWidth().clickable { navController.navigate(Routes.recipeDetail(recipe.id)) },
+        modifier = Modifier.fillMaxWidth().clickable { navController.navigate(Routes.recipeDetail(recipe.id.toString())) },
         shape = RoundedCornerShape(24.dp),
         color = Color.White,
         shadowElevation = 1.dp

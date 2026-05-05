@@ -38,6 +38,7 @@ import com.example.diplom.ui.navigation.Routes
 @Composable
 fun UmamiMainScreen(navController: NavController, currentUserId: String? = null, viewModel: RecipeViewModel = viewModel()) {
     val state by viewModel.state
+    val context = androidx.compose.ui.platform.LocalContext.current
     
     LaunchedEffect(currentUserId) {
         viewModel.currentUserId = currentUserId
@@ -97,14 +98,25 @@ fun UmamiMainScreen(navController: NavController, currentUserId: String? = null,
                     items(recipeState.recipes, key = { it.id }) { recipe ->
                         val isLiked = recipe.isLiked ?: recipe.likes?.any { it.userId == currentUserId } ?: false
                         val likesCount = recipe.likesCount ?: recipe.likes?.size ?: 0
+                        val isFavorited = recipe.isFavorited ?: false
                         
                         RecipePostCard(
-                            recipe = recipe.copy(isLiked = isLiked, likesCount = likesCount),
+                            recipe = recipe.copy(isLiked = isLiked, likesCount = likesCount, isFavorited = isFavorited),
                             navController = navController,
                             currentUserId = currentUserId,
-                            onLikeClick = { viewModel.toggleLike(recipe.id, isLiked, currentUserId) },
+                            isFavorited = isFavorited,
+                            onLikeClick = { viewModel.toggleLike(recipe.id.toString(), isLiked, currentUserId) },
                             onCommentClick = { navController.navigate("recipe_detail/${recipe.id}?tab=comments") },
-                            onFollowClick = { viewModel.toggleFollow(recipe.User!!.id) }
+                            onFollowClick = { viewModel.toggleFollow(recipe.User!!.id.toString()) },
+                            onFavoriteClick = {
+                                if (currentUserId.isNullOrBlank()) {
+                                    android.widget.Toast.makeText(context, "Нужно войти в аккаунт", android.widget.Toast.LENGTH_SHORT).show()
+                                } else {
+                                    viewModel.toggleFavorite(recipe.id, isFavorited)
+                                    val msg = if (isFavorited) "Удалено из избранного" else "Добавлено в избранное"
+                                    android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            }
                         )
                     }
                 }
@@ -421,18 +433,20 @@ fun RecipePostCard(
     recipe: com.example.diplom.data.Recipe, 
     navController: NavController,
     currentUserId: String? = null,
+    isFavorited: Boolean = false,
     onLikeClick: () -> Unit = {},
     onCommentClick: () -> Unit = {},
-    onFollowClick: () -> Unit = {}
+    onFollowClick: () -> Unit = {},
+    onFavoriteClick: () -> Unit = {}
 ) {
-    val onClick = { navController.navigate(Routes.recipeDetail(recipe.id)) }
+    val onClick = { navController.navigate(Routes.recipeDetail(recipe.id.toString())) }
     var comments by remember { mutableStateOf<List<com.example.diplom.data.Comment>?>(null) }
     
     val scope = rememberCoroutineScope()
     
     LaunchedEffect(recipe.id) {
         try {
-            comments = com.example.diplom.data.ApiClient.recipeService.getComments(recipe.id)
+            comments = com.example.diplom.data.ApiClient.recipeService.getComments(recipe.id.toString())
         } catch (e: Exception) {
             // ignore
         }
@@ -513,8 +527,12 @@ fun RecipePostCard(
                         .align(Alignment.TopEnd)
                         .size(36.dp)
                 ) {
-                    IconButton(onClick = { }) {
-                        Icon(Icons.Outlined.BookmarkBorder, contentDescription = "Save")
+                    IconButton(onClick = { onFavoriteClick() }) {
+                        Icon(
+                            if (isFavorited) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                            contentDescription = "Save",
+                            tint = if (isFavorited) UmamiOrange else Color.Gray
+                        )
                     }
                 }
 

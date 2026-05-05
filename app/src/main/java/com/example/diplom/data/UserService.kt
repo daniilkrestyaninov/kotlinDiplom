@@ -23,9 +23,9 @@ data class UserStats(
 
 // Favorite wrapper from GET /favorites
 data class FavoriteItem(
-    val id: String,
-    @SerializedName("recipe_id") val recipeId: String,
-    @SerializedName("user_id") val userId: String,
+    val id: Long,
+    @SerializedName("recipe_id") val recipeId: Long,
+    @SerializedName("user_id") val userId: Long,
     @SerializedName("is_downloaded") val isDownloaded: Boolean = false,
     @SerializedName("Recipe") val recipe: Recipe? = null
 )
@@ -55,7 +55,7 @@ interface UserService {
     suspend fun getFavorites(): List<FavoriteItem>
 
     @POST("recipes/{id}/favorite")
-    suspend fun addFavorite(@Path("id") recipeId: String)
+    suspend fun addFavorite(@Path("id") recipeId: String, @Body body: Map<String, Boolean> = emptyMap())
 
     @DELETE("recipes/{id}/favorite")
     suspend fun removeFavorite(@Path("id") recipeId: String)

@@ -1,4 +1,4 @@
-﻿package com.example.diplom
+package com.example.diplom
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -160,7 +160,9 @@ fun UmamiProfileScreen(
                     }
                     HorizontalDivider(color = Color(0xFFF5F5F5), modifier = Modifier.padding(horizontal = 20.dp))
 
-                    ProfileMenuItem("Список покупок") { if (!isLoggedIn) onLoginClick() }
+                    ProfileMenuItem("Парсинг сайта") { 
+                        if (!isLoggedIn) onLoginClick() else navController.navigate(Routes.PARSE_RECIPE)
+                    }
                     HorizontalDivider(color = Color(0xFFF5F5F5), modifier = Modifier.padding(horizontal = 20.dp))
 
                     ProfileMenuItem("Настройки") {}

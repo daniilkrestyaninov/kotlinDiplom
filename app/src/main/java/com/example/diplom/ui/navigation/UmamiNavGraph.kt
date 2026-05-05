@@ -41,6 +41,7 @@ object Routes {
     const val RECIPE_DETAIL = "recipe_detail/{recipeId}?tab={tab}"
     const val CHAT = "chat"
     const val ADD_RECIPE = "add_recipe"
+    const val PARSE_RECIPE = "parse_recipe"
     const val USER_DETAIL = "user_detail/{userId}"
     
     fun recipeDetail(recipeId: String, tab: String = "") = "recipe_detail/$recipeId?tab=$tab"
@@ -150,12 +151,12 @@ fun UmamiApp(tokenManager: TokenManager) {
                     UmamiChatScreen(navController = navController)
                 }
             }
-            composable(
-                route = Routes.USER_DETAIL,
-                arguments = listOf(navArgument("userId") { type = NavType.StringType })
-            ) { backStackEntry ->
+            composable(Routes.USER_DETAIL, arguments = listOf(navArgument("userId") { type = NavType.StringType })) { backStackEntry ->
                 val userId = backStackEntry.arguments?.getString("userId") ?: ""
                 UmamiUserDetailScreen(navController = navController, userId = userId, currentUserId = currentUserId)
+            }
+            composable(Routes.PARSE_RECIPE) {
+                com.example.diplom.UmamiParseRecipeScreen(navController = navController)
             }
         }
         

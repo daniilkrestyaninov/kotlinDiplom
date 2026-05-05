@@ -44,7 +44,9 @@ fun UmamiUserDetailScreen(
         try {
             profileData = userService.getUserProfile(userId)
             friends = userService.getFollowing(userId)
-            userRecipes = recipeService.getRecipes().filter { it.User?.id == userId }
+            // If viewing own profile, we might want to see both public and private.
+            // Our backend getAll now handles security (shows private only to owner).
+            userRecipes = recipeService.getRecipes(userId = userId)
         } catch (e: Exception) {
             android.util.Log.e("UserDetail", "Load failed", e)
         }

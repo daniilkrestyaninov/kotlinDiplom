@@ -3,7 +3,7 @@ package com.example.diplom.data
 import com.google.gson.annotations.SerializedName
 
 data class Recipe(
-    val id: String,
+    val id: Long,
     val title: String,
     val description: String?,
     val difficulty: String?,
@@ -26,6 +26,7 @@ data class Recipe(
     @SerializedName("likes_count") var likesCount: Int? = null,
     @SerializedName("comments_count") var commentsCount: Int? = null,
     @SerializedName("is_liked") var isLiked: Boolean? = null,
+    var isFavorited: Boolean? = null,
     val User: User? = null
 )
 
@@ -86,11 +87,11 @@ data class CreateRecipeRequest(
 )
 
 data class IngredientInput(
-    val id: Int?,
+    val id: Int? = null,
     val name: String? = null,
-    val quantity: String?,
-    val unit: String?,
-    val note: String?
+    val quantity: String? = null,
+    val unit: String? = null,
+    val note: String? = null
 )
 
 data class StepInput(

@@ -11,6 +11,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
@@ -52,7 +54,6 @@ fun UmamiRecipeDetailScreen(
     var showFullScreenImage by remember { mutableStateOf<String?>(null) }
     val state by viewModel.state
     val scope = rememberCoroutineScope()
-    var isFavorited by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -68,20 +69,18 @@ fun UmamiRecipeDetailScreen(
                         val r = (state as RecipeDetailState.Success).recipe
                         r.isLiked ?: r.likes?.any { it.userId == currentUserId } ?: false
                     } else false
+                    
+                    val isFavorited = if (state is RecipeDetailState.Success) {
+                        (state as RecipeDetailState.Success).isFavorited
+                    } else false
 
                     IconButton(onClick = {
                         if (currentUserId.isNullOrBlank()) {
                             Toast.makeText(context, "Нужно войти в аккаунт", Toast.LENGTH_SHORT).show()
                         } else {
-                            scope.launch {
-                                try {
-                                    if (isFavorited) ApiClient.userService.removeFavorite(recipeId)
-                                    else ApiClient.userService.addFavorite(recipeId)
-                                    isFavorited = !isFavorited
-                                } catch (e: Exception) {
-                                    android.util.Log.e("RecipeDetail", "Favorite toggle failed", e)
-                                }
-                            }
+                            viewModel.toggleFavorite(recipeId, isFavorited)
+                            val msg = if (isFavorited) "Удалено из избранного" else "Добавлено в избранное"
+                            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
                         }
                     }) {
                         Icon(
@@ -96,9 +95,15 @@ fun UmamiRecipeDetailScreen(
                             Toast.makeText(context, "Нужно войти в аккаунт", Toast.LENGTH_SHORT).show()
                         } else {
                             viewModel.toggleLike(recipeId, isLiked, currentUserId)
+                            val msg = if (isLiked) "Лайк убран" else "Лайк поставлен"
+                            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
                         }
                     }) {
-                        Icon(Icons.Default.Star, contentDescription = "Лайк", tint = if (isLiked) UmamiOrange else Color.Gray)
+                        Icon(
+                            if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = "Лайк",
+                            tint = if (isLiked) UmamiOrange else Color.Gray
+                        )
                     }
                 }
             )

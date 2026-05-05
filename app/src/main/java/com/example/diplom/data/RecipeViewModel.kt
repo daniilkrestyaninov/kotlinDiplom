@@ -72,7 +72,9 @@ class RecipeViewModel : ViewModel() {
         }
     }
 
-    fun fetchRecipes(currentUserId: String? = null) {
+    fun fetchRecipes(currentUserId: String? = null, forceRefresh: Boolean = false) {
+        if (!forceRefresh && _state.value is RecipeState.Success) return
+        
         fetchJob?.cancel()
         fetchJob = viewModelScope.launch {
             // Если у нас уже есть данные, показываем индикатор обновления вместо полного экрана загрузки
@@ -97,17 +99,25 @@ class RecipeViewModel : ViewModel() {
                     )
                 }
                 
-                // Fetch following status if logged in
+                // Fetch following and favorites status if logged in
                 val uid = currentUserId
                 if (uid != null) {
                     try {
-                        val following = ApiClient.userService.getFollowing(uid)
+                        val followingDef = async { ApiClient.userService.getFollowing(uid) }
+                        val favoritesDef = async { ApiClient.userService.getFavorites() }
+                        
+                        val following = followingDef.await()
+                        val favorites = favoritesDef.await()
+                        
                         val followingIds = following.map { it.id }.toSet()
+                        val favoriteRecipeIds = favorites.map { it.recipe?.id }.filterNotNull().toSet()
+                        
                         recipes.forEach { recipe ->
                             recipe.User?.isFollowing = followingIds.contains(recipe.User?.id)
+                            recipe.isFavorited = favoriteRecipeIds.contains(recipe.id)
                         }
                     } catch (e: Exception) {
-                        android.util.Log.e("RecipeViewModel", "Following fetch failed", e)
+                        android.util.Log.e("RecipeViewModel", "Following/Favorites fetch failed", e)
                     }
                 }
                 
@@ -124,7 +134,7 @@ class RecipeViewModel : ViewModel() {
     }
 
     fun refresh() {
-        fetchRecipes()
+        fetchRecipes(currentUserId, forceRefresh = true)
     }
 
     fun retry() {
@@ -135,21 +145,21 @@ class RecipeViewModel : ViewModel() {
         if (currentUserId.isNullOrBlank()) return
         val currentState = _state.value
         if (currentState is RecipeState.Success) {
-            val updatedRecipes = currentState.recipes.map { recipe ->
-                if (recipe.id == recipeId) {
-                    val currentLikes = recipe.likes?.toMutableList() ?: mutableListOf()
+            val updatedRecipes = currentState.recipes.map {
+                if (it.id.toString() == recipeId) {
+                    val currentLikes = it.likes?.toMutableList() ?: mutableListOf()
                     val newLikes = if (isCurrentlyLiked) {
                         currentLikes.filter { it.userId != currentUserId }
                     } else {
                         currentLikes + RecipeLike(currentUserId)
                     }
-                    recipe.copy(
+                    it.copy(
                         isLiked = !isCurrentlyLiked,
                         likes = newLikes,
                         likesCount = newLikes.size
                     )
                 } else {
-                    recipe
+                    it
                 }
             }
             _state.value = RecipeState.Success(updatedRecipes)
@@ -171,22 +181,49 @@ class RecipeViewModel : ViewModel() {
 
     fun toggleCategory(id: String) {
         selectedCategoryId = if (selectedCategoryId == id) null else id
-        fetchRecipes()
+        fetchRecipes(currentUserId, forceRefresh = true)
     }
     
     fun toggleKitchen(id: String) {
         selectedKitchenId = if (selectedKitchenId == id) null else id
-        fetchRecipes()
+        fetchRecipes(currentUserId, forceRefresh = true)
     }
 
     fun toggleCookingType(id: String) {
         selectedCookingId = if (selectedCookingId == id) null else id
-        fetchRecipes()
+        fetchRecipes(currentUserId, forceRefresh = true)
     }
 
     fun toggleCelebration(id: String) {
         selectedCelebrationId = if (selectedCelebrationId == id) null else id
-        fetchRecipes()
+        fetchRecipes(currentUserId, forceRefresh = true)
+    }
+
+    fun toggleFavorite(recipeId: Long, isCurrentlyFavorited: Boolean) {
+        val currentState = _state.value
+        if (currentState is RecipeState.Success) {
+            val updatedRecipes = currentState.recipes.map {
+                if (it.id == recipeId) {
+                    it.copy(isFavorited = !isCurrentlyFavorited)
+                } else {
+                    it
+                }
+            }
+            _state.value = RecipeState.Success(updatedRecipes)
+
+            viewModelScope.launch {
+                try {
+                    if (isCurrentlyFavorited) {
+                        ApiClient.userService.removeFavorite(recipeId.toString())
+                    } else {
+                        ApiClient.userService.addFavorite(recipeId.toString())
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("RecipeViewModel", "Favorite toggle failed", e)
+                    _state.value = currentState
+                }
+            }
+        }
     }
 
     fun toggleFollow(authorId: String) {

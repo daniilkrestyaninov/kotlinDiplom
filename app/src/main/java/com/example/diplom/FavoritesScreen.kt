@@ -1,4 +1,4 @@
-﻿package com.example.diplom
+package com.example.diplom
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -9,6 +9,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,96 +24,115 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.diplom.data.*
+import com.example.diplom.ui.navigation.Routes
 import com.example.diplom.ui.theme.InterFontFamily
 import com.example.diplom.ui.theme.UmamiOrange
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UmamiFavoritesScreen(
     navController: NavController,
-    currentUserId: String? = null
+    currentUserId: String? = null,
+    viewModel: FavoritesViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
-    val service = ApiClient.userService
-    val scope = rememberCoroutineScope()
-
-    var favorites by remember { mutableStateOf<List<FavoriteItem>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }
+    val state by viewModel.state
+    val isRefreshing = state is FavoritesState.Loading && (state as? FavoritesState.Success)?.favorites?.isNotEmpty() == true
 
     LaunchedEffect(Unit) {
-        try {
-            favorites = service.getFavorites()
-            isLoading = false
-        } catch (e: Exception) {
-            error = e.message
-            isLoading = false
-        }
+        viewModel.loadFavorites()
     }
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+    androidx.compose.material3.pulltorefresh.PullToRefreshBox(
+        isRefreshing = state is FavoritesState.Loading,
+        onRefresh = { viewModel.loadFavorites() },
+        modifier = Modifier.fillMaxSize()
     ) {
-        item {
-            Text(
-                "Избранное",
-                fontFamily = InterFontFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 28.sp,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-        }
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            item {
+                Text(
+                    "Избранное",
+                    fontFamily = InterFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 28.sp,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
 
-        if (isLoading) {
-            item {
-                Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = UmamiOrange)
-                }
-            }
-        } else if (error != null) {
-            item {
-                Text("Ошибка: $error", color = Color.Red, fontFamily = InterFontFamily)
-            }
-        } else if (favorites.isEmpty()) {
-            item {
-                Box(
-                    modifier = Modifier.fillMaxWidth().height(200.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.BookmarkBorder, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(48.dp))
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text("У вас пока нет избранных рецептов", fontFamily = InterFontFamily, color = Color.Gray)
-                    }
-                }
-            }
-        } else {
-            items(favorites, key = { it.id }) { fav ->
-                val recipe = fav.recipe ?: return@items
-                FavoriteRecipeCard(
-                    recipe = recipe,
-                    onClick = { navController.navigate("recipe_detail/${recipe.id}") },
-                    onRemove = {
-                        scope.launch {
-                            try {
-                                service.removeFavorite(recipe.id)
-                                favorites = favorites.filter { it.id != fav.id }
-                            } catch (e: Exception) {
-                                android.util.Log.e("Favorites", "Remove failed", e)
+            when (val s = state) {
+                is FavoritesState.Loading -> {
+                    if ((s as? FavoritesState.Success)?.favorites.isNullOrEmpty()) {
+                        item {
+                            Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator(color = UmamiOrange)
                             }
                         }
                     }
-                )
+                }
+                is FavoritesState.Error -> {
+                    item {
+                        Text("Ошибка: ${s.message}", color = Color.Red, fontFamily = InterFontFamily)
+                    }
+                }
+                is FavoritesState.Success -> {
+                    if (s.favorites.isEmpty()) {
+                        item {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().height(200.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(Icons.Default.BookmarkBorder, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(48.dp))
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Text("У вас пока нет избранных рецептов", fontFamily = InterFontFamily, color = Color.Gray)
+                                }
+                            }
+                        }
+                    } else {
+                        items(s.favorites, key = { it.id }) { fav ->
+                            val recipe = fav.recipe
+                            if (recipe == null) {
+                                // Fallback UI for items with missing recipe data
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                                    shape = RoundedCornerShape(16.dp),
+                                    color = Color(0xFFFEECEB)
+                                ) {
+                                    Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.Error, contentDescription = null, tint = Color.Red)
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Text("Рецепт недоступен (ID: ${fav.recipeId})", color = Color.Red, fontSize = 14.sp)
+                                        Spacer(modifier = Modifier.weight(1f))
+                                        IconButton(onClick = { viewModel.removeFavorite(fav.recipeId.toString()) }) {
+                                            Icon(Icons.Default.Delete, contentDescription = "Удалить", tint = Color.Red)
+                                        }
+                                    }
+                                }
+                            } else {
+                                FavoriteRecipeCard(
+                                    recipe = recipe,
+                                    navController = navController,
+                                    onRemove = {
+                                        viewModel.removeFavorite(recipe.id.toString())
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-fun FavoriteRecipeCard(recipe: Recipe, onClick: () -> Unit, onRemove: () -> Unit) {
+fun FavoriteRecipeCard(recipe: Recipe, navController: NavController, onRemove: () -> Unit) {
     Surface(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        modifier = Modifier.fillMaxWidth().clickable { navController.navigate(Routes.recipeDetail(recipe.id.toString())) },
         shape = RoundedCornerShape(16.dp),
         shadowElevation = 2.dp,
         color = Color.White

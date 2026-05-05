@@ -11,6 +11,8 @@ interface RecipeService {
         @Query("kitchen_id") kitchenId: String? = null,
         @Query("cooking_id") cookingId: String? = null,
         @Query("celebration_id") celebrationId: String? = null,
+        @Query("user_id") userId: String? = null,
+        @Query("is_private") isPrivate: Boolean? = null,
         @Query("search") search: String? = null
     ): List<Recipe>
 
