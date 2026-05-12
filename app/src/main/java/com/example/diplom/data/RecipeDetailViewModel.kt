@@ -50,7 +50,7 @@ class RecipeDetailViewModel : ViewModel() {
                 
                 _state.value = RecipeDetailState.Success(recipe, comments, isFavorited)
             } catch (e: Exception) {
-                _state.value = RecipeDetailState.Error(e.message ?: "Failed to load recipe")
+                _state.value = RecipeDetailState.Error("Не удалось загрузить рецепт")
             }
         }
     }
@@ -87,13 +87,14 @@ class RecipeDetailViewModel : ViewModel() {
         tasteSour: Int?,
         tasteSalty: Int?,
         tasteSpicy: Int?,
-        tasteUmami: Int?
+        tasteUmami: Int?,
+        parentCommentId: String? = null
     ) {
         viewModelScope.launch {
             try {
                 recipeService.postComment(
                     recipeId,
-                    CommentRequest(text, rating, tasteSweet, tasteSour, tasteSalty, tasteSpicy, tasteUmami)
+                    CommentRequest(text, rating, tasteSweet, tasteSour, tasteSalty, tasteSpicy, tasteUmami, parentCommentId)
                 )
                 // Reload recipe and comments to get fresh data
                 val currentState = _state.value
@@ -160,6 +161,45 @@ class RecipeDetailViewModel : ViewModel() {
                     android.util.Log.e("RecipeDetailViewModel", "Toggle follow failed", e)
                     _state.value = currentState
                 }
+            }
+        }
+    }
+
+    fun toggleCommentLike(commentId: String) {
+        val currentState = _state.value
+        if (currentState is RecipeDetailState.Success) {
+            val updatedComments = currentState.comments.map { comment ->
+                if (comment.id == commentId) {
+                    val isLiked = comment.isLiked ?: false
+                    val likeCount = comment.likeCount ?: 0
+                    comment.copy(
+                        isLiked = !isLiked,
+                        likeCount = if (isLiked) (likeCount - 1).coerceAtLeast(0) else likeCount + 1
+                    )
+                } else comment
+            }
+            _state.value = currentState.copy(comments = updatedComments)
+
+            viewModelScope.launch {
+                try {
+                    ApiClient.recipeService.toggleCommentLike(commentId)
+                } catch (e: Exception) {
+                    android.util.Log.e("RecipeDetailVM", "Comment like toggle failed", e)
+                    _state.value = currentState
+                }
+            }
+        }
+    }
+
+    fun report(type: String, recipeId: Long? = null, reportedUserId: Long? = null, reason: String, description: String? = null, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                ApiClient.reportService.createReport(
+                    ReportRequest(type, reportedUserId, recipeId, reason, description)
+                )
+                onSuccess()
+            } catch (e: Exception) {
+                android.util.Log.e("RecipeDetailVM", "Report failed", e)
             }
         }
     }

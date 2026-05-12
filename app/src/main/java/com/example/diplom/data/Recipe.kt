@@ -12,6 +12,7 @@ data class Recipe(
     val portion: Int? = null,
     val calorific: Int? = null,
     @SerializedName("is_private") val isPrivate: Boolean? = false,
+    @SerializedName("is_generated") val isGenerated: Boolean? = false,
     @SerializedName("kitchen_id") val kitchenId: String? = null,
     @SerializedName("celebration_id") val celebrationId: String? = null,
     @SerializedName("cooking_id") val cookingId: String? = null,
@@ -25,6 +26,8 @@ data class Recipe(
     // For optimistic UI updates:
     @SerializedName("likes_count") var likesCount: Int? = null,
     @SerializedName("comments_count") var commentsCount: Int? = null,
+    @SerializedName("views_count") var viewsCount: Int? = null,
+    var rating: Double? = null,
     @SerializedName("is_liked") var isLiked: Boolean? = null,
     var isFavorited: Boolean? = null,
     val User: User? = null
@@ -57,6 +60,8 @@ data class User(
     val id: String,
     val username: String,
     val name: String?,
+    val email: String? = null,
+    val bio: String? = null,
     @SerializedName("avatar_url") val avatarUrl: String?,
     @SerializedName("is_following") var isFollowing: Boolean? = null
 )
@@ -78,6 +83,7 @@ data class CreateRecipeRequest(
     val portion: Int,
     val calorific: Int? = null,
     @SerializedName("is_private") val isPrivate: Boolean = false,
+    @SerializedName("is_generated") val isGenerated: Boolean = false,
     @SerializedName("kitchen_id") val kitchenId: Int? = null,
     @SerializedName("celebration_id") val celebrationId: Int? = null,
     @SerializedName("cooking_id") val cookingId: Int? = null,
@@ -110,3 +116,7 @@ data class UploadResponse(
     val url: String,
     val fileName: String
 )
+
+object AiDraft {
+    var suggestion: AiRecipeSuggestion? = null
+}

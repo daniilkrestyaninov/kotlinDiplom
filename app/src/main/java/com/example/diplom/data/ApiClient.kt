@@ -9,7 +9,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 object ApiClient {
-    private const val BASE_URL = "http://188.233.238.70:5000/"
+    private const val BASE_URL = "https://umami-recipes.ru/api/"
     
     private var tokenManager: TokenManager? = null
 
@@ -18,27 +18,39 @@ object ApiClient {
     }
 
     private val authInterceptor = Interceptor { chain ->
+        val requestBuilder = chain.request().newBuilder()
+        
+        // Get token synchronously
         try {
-            val requestBuilder = chain.request().newBuilder()
-            
-            // Get token synchronously for the request
             val token = runBlocking { tokenManager?.getToken?.first() }
-            
             if (!token.isNullOrEmpty()) {
                 requestBuilder.addHeader("Authorization", "Bearer $token")
             }
-            
-            chain.proceed(requestBuilder.build())
         } catch (e: Exception) {
-            throw java.io.IOException(e.message ?: "Network error")
+            android.util.Log.e("ApiClient", "Token retrieval failed", e)
+        }
+        
+        try {
+            chain.proceed(requestBuilder.build())
+        } catch (e: java.io.IOException) {
+            android.util.Log.e("ApiClient", "Network call failed", e)
+            okhttp3.Response.Builder()
+                .request(chain.request())
+                .protocol(okhttp3.Protocol.HTTP_1_1)
+                .code(503)
+                .message("Service Unavailable")
+                .body(okhttp3.ResponseBody.create(null, ""))
+                .build()
         }
     }
 
     private val client = OkHttpClient.Builder()
         .addInterceptor(authInterceptor)
-        .connectTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
-        .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
-        .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+        .retryOnConnectionFailure(true)
+        .connectionPool(okhttp3.ConnectionPool(5, 30, java.util.concurrent.TimeUnit.SECONDS))
+        .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .writeTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
         .build()
 
     val retrofit: Retrofit by lazy {
@@ -54,4 +66,5 @@ object ApiClient {
     val userService: UserService by lazy { retrofit.create(UserService::class.java) }
     val chatService: ChatService by lazy { retrofit.create(ChatService::class.java) }
     val toolsService: ToolsService by lazy { retrofit.create(ToolsService::class.java) }
+    val reportService: ReportService by lazy { retrofit.create(ReportService::class.java) }
 }

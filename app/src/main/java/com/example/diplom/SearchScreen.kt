@@ -3,8 +3,9 @@ package com.example.diplom
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,6 +20,7 @@ import com.example.diplom.data.RecipeState
 import com.example.diplom.data.RecipeViewModel
 import com.example.diplom.ui.theme.InterFontFamily
 import com.example.diplom.ui.theme.UmamiOrange
+import com.example.diplom.ui.theme.UmamiGreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,6 +47,7 @@ fun UmamiSearchScreen(navController: NavController, currentUserId: String? = nul
             )
         }
 
+        // Search field
         item {
             OutlinedTextField(
                 value = searchQuery,
@@ -55,26 +58,45 @@ fun UmamiSearchScreen(navController: NavController, currentUserId: String? = nul
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp),
-                placeholder = { Text("Поиск", fontFamily = InterFontFamily, color = Color.Gray) },
+                placeholder = { Text("Название рецепта или ингредиент...", fontFamily = InterFontFamily, color = Color.Gray, fontSize = 14.sp) },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray) },
                 trailingIcon = {
-                    Button(
-                        onClick = { viewModel.fetchRecipes() },
-                        colors = ButtonDefaults.buttonColors(containerColor = com.example.diplom.ui.theme.UmamiGreen),
-                        modifier = Modifier.padding(end = 4.dp).height(36.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp)
-                    ) {
-                        Text("Найти рецепт", fontFamily = InterFontFamily, fontSize = 12.sp)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = {
+                                searchQuery = ""
+                                viewModel.searchQuery = ""
+                                viewModel.fetchRecipes(currentUserId, forceRefresh = true)
+                            }) {
+                                Icon(Icons.Default.Close, contentDescription = "Очистить", tint = Color.Gray, modifier = Modifier.size(20.dp))
+                            }
+                        }
+                        Button(
+                            onClick = { viewModel.fetchRecipes(currentUserId, forceRefresh = true) },
+                            colors = ButtonDefaults.buttonColors(containerColor = UmamiGreen),
+                            modifier = Modifier.padding(end = 4.dp).height(36.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp),
+                            shape = RoundedCornerShape(20.dp)
+                        ) {
+                            Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Найти", fontFamily = InterFontFamily, fontSize = 12.sp)
+                        }
                     }
                 },
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+                shape = RoundedCornerShape(24.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     unfocusedBorderColor = Color(0xFFE5E5E5),
-                    focusedBorderColor = UmamiOrange
-                )
+                    focusedBorderColor = UmamiOrange,
+                    unfocusedContainerColor = Color(0xFFFAFAFA),
+                    focusedContainerColor = Color.White
+                ),
+                singleLine = true
             )
+            Spacer(modifier = Modifier.height(8.dp))
         }
 
+        // Category filters
         item {
             FilterSection(
                 title = "Категории:",
@@ -84,6 +106,7 @@ fun UmamiSearchScreen(navController: NavController, currentUserId: String? = nul
             )
         }
 
+        // Dropdown filters
         item {
             Text(
                 "Фильтры:",
@@ -104,17 +127,83 @@ fun UmamiSearchScreen(navController: NavController, currentUserId: String? = nul
             )
         }
 
+        // Active filters indicator
+        item {
+            val hasFilters = viewModel.selectedCategoryId != null ||
+                viewModel.selectedKitchenId != null ||
+                viewModel.selectedCookingId != null ||
+                viewModel.selectedCelebrationId != null ||
+                searchQuery.isNotBlank()
+
+            if (hasFilters) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val count = listOfNotNull(
+                        viewModel.selectedCategoryId,
+                        viewModel.selectedKitchenId,
+                        viewModel.selectedCookingId,
+                        viewModel.selectedCelebrationId
+                    ).size + if (searchQuery.isNotBlank()) 1 else 0
+
+                    Text(
+                        "Активных фильтров: $count",
+                        fontSize = 12.sp,
+                        color = UmamiOrange,
+                        fontFamily = InterFontFamily
+                    )
+                    TextButton(onClick = {
+                        searchQuery = ""
+                        viewModel.searchQuery = ""
+                        viewModel.selectedCategoryId = null
+                        viewModel.selectedKitchenId = null
+                        viewModel.selectedCookingId = null
+                        viewModel.selectedCelebrationId = null
+                        viewModel.fetchRecipes(currentUserId, forceRefresh = true)
+                    }) {
+                        Text("Сбросить всё", fontSize = 12.sp, color = Color.Gray, fontFamily = InterFontFamily)
+                    }
+                }
+            }
+        }
+
         when (val recipeState = state) {
             is RecipeState.Success -> {
                 item {
+                    val count = recipeState.recipes.size
+                    val word = when {
+                        count % 10 == 1 && count % 100 != 11 -> "рецепт"
+                        count % 10 in 2..4 && count % 100 !in 12..14 -> "рецепта"
+                        else -> "рецептов"
+                    }
                     Text(
-                        "Найдено ${recipeState.recipes.size} рецепта",
+                        "Найдено $count $word",
                         fontFamily = InterFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
                     )
                 }
+
+                if (recipeState.recipes.isEmpty()) {
+                    item {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(40.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(Icons.Default.SearchOff, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(48.dp))
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text("Ничего не найдено", fontWeight = FontWeight.Bold, fontFamily = InterFontFamily, color = Color.DarkGray)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("Попробуйте изменить запрос или фильтры", color = Color.Gray, fontFamily = InterFontFamily, fontSize = 13.sp)
+                        }
+                    }
+                }
+
                 items(recipeState.recipes) { recipe ->
                     val isLiked = recipe.isLiked ?: recipe.likes?.any { it.userId == currentUserId } ?: false
                     val likesCount = recipe.likesCount ?: recipe.likes?.size ?: 0
@@ -149,7 +238,28 @@ fun UmamiSearchScreen(navController: NavController, currentUserId: String? = nul
             }
             is RecipeState.Error -> {
                 item {
-                    Text("Error: ${recipeState.message}", color = Color.Red, modifier = Modifier.padding(20.dp))
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(40.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = UmamiOrange,
+                            modifier = Modifier.size(48.dp)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("Не удалось выполнить поиск", fontWeight = FontWeight.Bold, fontFamily = InterFontFamily, color = Color.DarkGray)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("Проверьте подключение к интернету", color = Color.Gray, fontFamily = InterFontFamily)
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Button(
+                            onClick = { viewModel.fetchRecipes(currentUserId, forceRefresh = true) },
+                            colors = ButtonDefaults.buttonColors(containerColor = UmamiOrange)
+                        ) {
+                            Text("Попробовать снова", fontFamily = InterFontFamily)
+                        }
+                    }
                 }
             }
         }

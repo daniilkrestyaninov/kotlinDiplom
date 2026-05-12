@@ -1,4 +1,4 @@
-﻿package com.example.diplom.data
+package com.example.diplom.data
 
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
@@ -29,16 +29,22 @@ class AuthViewModel(private val tokenManager: TokenManager) : ViewModel() {
         viewModelScope.launch {
             tokenManager.getToken.collect { token ->
                 if (!token.isNullOrEmpty()) {
-                    try {
-                        val user = userService.getMyProfile()
-                        _state.value = AuthState.Success(user)
-                    } catch (_: Exception) {
-                        tokenManager.deleteToken()
-                        _state.value = AuthState.Idle
-                    }
+                    refreshProfile()
                 } else {
                     _state.value = AuthState.Idle
                 }
+            }
+        }
+    }
+
+    fun refreshProfile() {
+        viewModelScope.launch {
+            try {
+                val user = userService.getMyProfile()
+                _state.value = AuthState.Success(user)
+            } catch (_: Exception) {
+                // If it fails during checkAuthStatus, we might want to logout
+                // but if it's a manual refresh, we just ignore
             }
         }
     }
@@ -51,7 +57,7 @@ class AuthViewModel(private val tokenManager: TokenManager) : ViewModel() {
                 tokenManager.saveToken(res.token)
                 _state.value = AuthState.Success(res.user)
             } catch (e: Exception) {
-                _state.value = AuthState.Error(e.message ?: "Login failed")
+                _state.value = AuthState.Error("Ошибка входа. Проверьте данные или подключение.")
             }
         }
     }
@@ -63,7 +69,7 @@ class AuthViewModel(private val tokenManager: TokenManager) : ViewModel() {
                 service.register(RegisterRequest(username, name, email, pass))
                 _state.value = AuthState.VerificationRequired(email = email, password = pass)
             } catch (e: Exception) {
-                _state.value = AuthState.Error(e.message ?: "Registration failed")
+                _state.value = AuthState.Error("Ошибка регистрации. Попробуйте позже.")
             }
         }
     }
@@ -81,7 +87,7 @@ class AuthViewModel(private val tokenManager: TokenManager) : ViewModel() {
                     _state.value = AuthState.Idle
                 }
             } catch (e: Exception) {
-                _state.value = AuthState.Error(e.message ?: "Email verification failed")
+                _state.value = AuthState.Error("Ошибка подтверждения email. Проверьте код.")
             }
         }
     }

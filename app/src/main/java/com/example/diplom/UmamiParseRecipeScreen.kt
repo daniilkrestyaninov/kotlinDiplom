@@ -128,7 +128,7 @@ fun UmamiParseRecipeScreen(navController: NavController) {
                                 Toast.makeText(context, "Загружено: $ingCount ингред., $stepsCount шагов", Toast.LENGTH_SHORT).show()
                             } catch (e: Exception) {
                                 android.util.Log.e("ParseRecipe", "Parsing failed", e)
-                                Toast.makeText(context, "Ошибка парсинга: ${e.message}", Toast.LENGTH_LONG).show()
+                                Toast.makeText(context, "Ошибка парсинга. Проверьте ссылку и подключение.", Toast.LENGTH_LONG).show()
                             } finally {
                                 isLoading = false
                             }
@@ -318,7 +318,7 @@ fun UmamiParseRecipeScreen(navController: NavController) {
                                     navController.popBackStack()
                                 } catch (e: Exception) {
                                     android.util.Log.e("ParseRecipe", "Save failed", e)
-                                    Toast.makeText(context, "Ошибка сохранения: ${e.message}", Toast.LENGTH_LONG).show()
+                                    Toast.makeText(context, "Ошибка сохранения. Проверьте подключение.", Toast.LENGTH_LONG).show()
                                 } finally {
                                     isLoading = false
                                 }

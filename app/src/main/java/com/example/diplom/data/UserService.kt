@@ -30,9 +30,19 @@ data class FavoriteItem(
     @SerializedName("Recipe") val recipe: Recipe? = null
 )
 
+// Request for updating profile
+data class UpdateProfileRequest(
+    val name: String? = null,
+    val bio: String? = null,
+    @SerializedName("avatar_url") val avatarUrl: String? = null
+)
+
 interface UserService {
     @GET("users/me")
     suspend fun getMyProfile(): User
+    
+    @PATCH("users/me")
+    suspend fun updateProfile(@Body request: UpdateProfileRequest): User
     
     @GET("users/{id}")
     suspend fun getUserProfile(@Path("id") id: String): UserProfile
@@ -49,6 +59,9 @@ interface UserService {
 
     @GET("users/{id}/following")
     suspend fun getFollowing(@Path("id") id: String): List<User>
+
+    @GET("users/{id}/recipes")
+    suspend fun getUserRecipes(@Path("id") id: String): List<Recipe>
 
     // Favorites
     @GET("favorites")

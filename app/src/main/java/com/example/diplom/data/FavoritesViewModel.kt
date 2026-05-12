@@ -31,7 +31,7 @@ class FavoritesViewModel : ViewModel() {
                 _state.value = FavoritesState.Success(favs)
             } catch (e: Exception) {
                 android.util.Log.e("FavoritesVM", "Error loading favorites", e)
-                _state.value = FavoritesState.Error(e.message ?: "Unknown error")
+                _state.value = FavoritesState.Error("Не удалось загрузить избранное")
             }
         }
     }

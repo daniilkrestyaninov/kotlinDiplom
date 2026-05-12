@@ -75,7 +75,23 @@ fun UmamiFavoritesScreen(
                 }
                 is FavoritesState.Error -> {
                     item {
-                        Text("Ошибка: ${s.message}", color = Color.Red, fontFamily = InterFontFamily)
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(40.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(Icons.Default.Error, contentDescription = null, tint = UmamiOrange, modifier = Modifier.size(48.dp))
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text("Не удалось загрузить избранное", fontWeight = FontWeight.Bold, fontFamily = InterFontFamily, color = Color.DarkGray)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("Проверьте подключение к интернету", color = Color.Gray, fontFamily = InterFontFamily)
+                            Spacer(modifier = Modifier.height(24.dp))
+                            Button(
+                                onClick = { viewModel.loadFavorites() },
+                                colors = ButtonDefaults.buttonColors(containerColor = UmamiOrange)
+                            ) {
+                                Text("Попробовать снова", fontFamily = InterFontFamily)
+                            }
+                        }
                     }
                 }
                 is FavoritesState.Success -> {

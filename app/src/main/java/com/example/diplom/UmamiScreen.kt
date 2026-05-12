@@ -129,17 +129,22 @@ fun UmamiMainScreen(navController: NavController, currentUserId: String? = null,
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Error,
+                                imageVector = Icons.Default.Warning,
                                 contentDescription = null,
-                                tint = Color.Red,
+                                tint = UmamiOrange,
                                 modifier = Modifier.size(48.dp)
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                "Ошибка загрузки: ${recipeState.message}",
-                                color = Color.Red,
+                                "Не удалось загрузить рецепты",
+                                color = Color.DarkGray,
                                 fontWeight = FontWeight.Bold,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                fontFamily = InterFontFamily
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "Проверьте подключение к интернету",
+                                color = Color.Gray,
                                 fontFamily = InterFontFamily
                             )
                             Spacer(modifier = Modifier.height(24.dp))
@@ -162,6 +167,7 @@ fun UmamiMainScreen(navController: NavController, currentUserId: String? = null,
 fun UmamiTopBar(
     isLoggedIn: Boolean = false,
     username: String? = null,
+    avatarUrl: String? = null,
     onAuthClick: () -> Unit = {}
 ) {
     TopAppBar(
@@ -212,12 +218,32 @@ fun UmamiTopBar(
                          // Но для простоты в TopBar добавим параметр avatarUrl в будущем. 
                          // Сейчас просто оставим иконку, но сделаем её красивее.
                     }
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = "Профиль",
-                        tint = Color.White,
-                        modifier = Modifier.size(20.dp)
-                    )
+                    if (isLoggedIn) {
+                        if (!avatarUrl.isNullOrBlank()) {
+                            AsyncImage(
+                                model = com.example.diplom.data.normalizeImageUrl(avatarUrl),
+                                contentDescription = "Аватар",
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = "Профиль",
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = "Профиль",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
             
@@ -428,243 +454,6 @@ fun CategoryCard(
     }
 }
 
-@Composable
-fun RecipePostCard(
-    recipe: com.example.diplom.data.Recipe, 
-    navController: NavController,
-    currentUserId: String? = null,
-    isFavorited: Boolean = false,
-    onLikeClick: () -> Unit = {},
-    onCommentClick: () -> Unit = {},
-    onFollowClick: () -> Unit = {},
-    onFavoriteClick: () -> Unit = {}
-) {
-    val onClick = { navController.navigate(Routes.recipeDetail(recipe.id.toString())) }
-    var comments by remember { mutableStateOf<List<com.example.diplom.data.Comment>?>(null) }
-    
-    val scope = rememberCoroutineScope()
-    
-    LaunchedEffect(recipe.id) {
-        try {
-            comments = com.example.diplom.data.ApiClient.recipeService.getComments(recipe.id.toString())
-        } catch (e: Exception) {
-            // ignore
-        }
-    }
-
-    Card(
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        modifier = Modifier
-            .padding(horizontal = 20.dp, vertical = 10.dp)
-            .fillMaxWidth()
-            .clickable { onClick() }
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            // User Header
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                    AsyncImage(
-                        model = com.example.diplom.data.normalizeImageUrl(recipe.User?.avatarUrl) ?: R.drawable.ic_avatar,
-                        contentDescription = "Пользователь",
-                        modifier = Modifier
-                            .size(45.dp)
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Column {
-                        Text(
-                            recipe.User?.name ?: "Anonymous",
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = InterFontFamily,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text("@${recipe.User?.username ?: "unknown"}", fontSize = 12.sp, color = Color.Gray, fontFamily = InterFontFamily, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                if (currentUserId != null && recipe.User?.id != currentUserId && recipe.User?.isFollowing != true) {
-                    Button(
-                        onClick = { onFollowClick() },
-                        colors = ButtonDefaults.buttonColors(containerColor = UmamiGreen),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                        modifier = Modifier.width(112.dp).height(36.dp)
-                    ) {
-                        Text("Подписаться", fontSize = 12.sp, fontFamily = InterFontFamily, maxLines = 1)
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Main Image
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1f)
-                    .clip(RoundedCornerShape(16.dp))
-            ) {
-                AsyncImage(
-                    model = com.example.diplom.data.normalizeImageUrl(recipe.imageUrl) ?: R.drawable.img_pasta,
-                    contentDescription = recipe.title,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-                
-                // Bookmark
-                Surface(
-                    color = Color.White.copy(alpha = 0.8f),
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier
-                        .padding(12.dp)
-                        .align(Alignment.TopEnd)
-                        .size(36.dp)
-                ) {
-                    IconButton(onClick = { onFavoriteClick() }) {
-                        Icon(
-                            if (isFavorited) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
-                            contentDescription = "Save",
-                            tint = if (isFavorited) UmamiOrange else Color.Gray
-                        )
-                    }
-                }
-
-                // Badges
-                Row(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    BadgeItem(icon = Icons.Default.AccessTime, text = "${recipe.cookingTime ?: 0} мин")
-                    BadgeItem(icon = Icons.Default.KeyboardArrowDown, text = recipe.difficulty ?: "Легко")
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Title & Description
-            Text(
-                recipe.title,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                lineHeight = 26.sp,
-                fontFamily = InterFontFamily
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                recipe.description ?: "Нет описания",
-                fontSize = 14.sp,
-                color = Color.Gray,
-                fontFamily = InterFontFamily
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Stats
-            Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { onLikeClick() }) {
-                    val currentLikes = recipe.likesCount ?: recipe.likes?.size ?: 0
-                    val currentIsLiked = recipe.isLiked == true
-
-                    Icon(
-                        if (currentIsLiked) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,
-                        contentDescription = "Like",
-                        modifier = Modifier.size(24.dp),
-                        tint = if (currentIsLiked) UmamiOrange else Color.Gray
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(currentLikes.toString(), fontWeight = FontWeight.Bold, color = Color.DarkGray, fontFamily = InterFontFamily)
-                }
-                    val currentCommentsCount = comments?.size ?: recipe.commentsCount ?: 0
-                StatItem(
-                    icon = Icons.Outlined.ModeComment, 
-                    count = currentCommentsCount.toString(),
-                    modifier = Modifier.clickable { onCommentClick() }
-                )
-            }
-
-            if (!comments.isNullOrEmpty()) {
-                HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp), color = Color(0xFFF0F0F0))
-                CommentPreview(comment = comments!!.first())
-            }
-        }
-    }
-}
-
-@Composable
-fun BadgeItem(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String) {
-    Surface(
-        color = Color.White.copy(alpha = 0.9f),
-        shape = RoundedCornerShape(20.dp),
-        shadowElevation = 2.dp
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-        ) {
-            IconBadge(icon, contentDescription = null, size = 14.dp)
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(text, fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = InterFontFamily)
-        }
-    }
-}
-
-@Composable
-private fun IconBadge(icon: androidx.compose.ui.graphics.vector.ImageVector, contentDescription: String?, size: androidx.compose.ui.unit.Dp) {
-    Icon(icon, contentDescription = contentDescription, modifier = Modifier.size(size))
-}
-
-@Composable
-fun StatItem(icon: androidx.compose.ui.graphics.vector.ImageVector, count: String, modifier: Modifier = Modifier) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = Color.Gray)
-        Spacer(modifier = Modifier.width(6.dp))
-        Text(count, fontWeight = FontWeight.Bold, color = Color.DarkGray, fontFamily = InterFontFamily)
-    }
-}
-
-@Composable
-fun CommentPreview(comment: com.example.diplom.data.Comment) {
-    Column {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            AsyncImage(
-                model = com.example.diplom.data.normalizeImageUrl(comment.author?.avatarUrl) ?: R.drawable.ic_avatar,
-                contentDescription = null,
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(CircleShape),
-                contentScale = ContentScale.Crop
-            )
-            Spacer(modifier = Modifier.width(10.dp))
-            Text(
-                text = comment.author?.name ?: comment.author?.username ?: "Пользователь",
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.sp,
-                fontFamily = InterFontFamily
-            )
-            Spacer(modifier = Modifier.weight(1f))
-        }
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = comment.content,
-            fontSize = 14.sp,
-            modifier = Modifier.padding(start = 42.dp),
-            fontFamily = InterFontFamily,
-            color = Color.DarkGray
-        )
-    }
-}
 
 @Composable
 fun UmamiBottomNavigation(

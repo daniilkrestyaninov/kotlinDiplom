@@ -6,7 +6,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 
 sealed class RecipeState {
@@ -53,21 +52,17 @@ class RecipeViewModel : ViewModel() {
     private fun initialFetch() {
         viewModelScope.launch {
             try {
-                // Загружаем все метаданные один раз
-                val categoriesDef = async { service.getCategories() }
-                val kitchensDef = async { service.getKitchens() }
-                val cookingDef = async { service.getCookingTypes() }
-                val celebrationsDef = async { service.getCelebrations() }
-
-                _categories.value = categoriesDef.await()
-                _kitchens.value = kitchensDef.await()
-                _cookingTypes.value = cookingDef.await()
-                _celebrations.value = celebrationsDef.await()
+                // Загружаем метаданные последовательно, каждый с защитой от ошибок
+                _categories.value = try { service.getCategories() } catch (_: Exception) { emptyList() }
+                _kitchens.value = try { service.getKitchens() } catch (_: Exception) { emptyList() }
+                _cookingTypes.value = try { service.getCookingTypes() } catch (_: Exception) { emptyList() }
+                _celebrations.value = try { service.getCelebrations() } catch (_: Exception) { emptyList() }
                 
                 // После метаданных грузим рецепты
                 fetchRecipes()
             } catch (e: Exception) {
-                _state.value = RecipeState.Error("Metadata: ${e.message}")
+                android.util.Log.e("RecipeViewModel", "initialFetch failed", e)
+                _state.value = RecipeState.Error("Не удалось загрузить данные")
             }
         }
     }
@@ -85,10 +80,20 @@ class RecipeViewModel : ViewModel() {
             }
             
             try {
-                val recipes = if (searchQuery.isBlank() && selectedCategoryId == null && 
-                    selectedKitchenId == null && selectedCookingId == null && selectedCelebrationId == null) {
-                    // Используем рекомендации (бэк теперь сам рандомит выдачу на 1 странице)
-                    service.getRecommendations(page = 1, limit = 20)
+                val noFilters = searchQuery.isBlank() && selectedCategoryId == null && 
+                    selectedKitchenId == null && selectedCookingId == null && selectedCelebrationId == null
+                    
+                val recipes = if (noFilters) {
+                    // Рекомендации требуют авторизацию, для гостей используем обычную ленту
+                    if (currentUserId != null) {
+                        try {
+                            service.getRecommendations(page = 1, limit = 20)
+                        } catch (_: Exception) {
+                            service.getRecipes()
+                        }
+                    } else {
+                        service.getRecipes()
+                    }
                 } else {
                     service.getRecipes(
                         categoryId = selectedCategoryId,
@@ -103,11 +108,8 @@ class RecipeViewModel : ViewModel() {
                 val uid = currentUserId
                 if (uid != null) {
                     try {
-                        val followingDef = async { ApiClient.userService.getFollowing(uid) }
-                        val favoritesDef = async { ApiClient.userService.getFavorites() }
-                        
-                        val following = followingDef.await()
-                        val favorites = favoritesDef.await()
+                        val following = try { ApiClient.userService.getFollowing(uid) } catch (_: Exception) { emptyList() }
+                        val favorites = try { ApiClient.userService.getFavorites() } catch (_: Exception) { emptyList() }
                         
                         val followingIds = following.map { it.id }.toSet()
                         val favoriteRecipeIds = favorites.map { it.recipe?.id }.filterNotNull().toSet()
@@ -125,7 +127,7 @@ class RecipeViewModel : ViewModel() {
             } catch (e: Exception) {
                 android.util.Log.e("RecipeViewModel", "Fetch recipes failed", e)
                 if (_state.value !is RecipeState.Success) {
-                    _state.value = RecipeState.Error(e.message ?: "Unknown error")
+                    _state.value = RecipeState.Error("Не удалось загрузить рецепты")
                 }
             } finally {
                 _isRefreshing.value = false

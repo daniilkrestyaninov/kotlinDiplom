@@ -40,7 +40,7 @@ object Routes {
     const val PROFILE = "profile"
     const val RECIPE_DETAIL = "recipe_detail/{recipeId}?tab={tab}"
     const val CHAT = "chat"
-    const val ADD_RECIPE = "add_recipe"
+    const val ADD_RECIPE = "add_recipe?recipeId={recipeId}&draftJson={draftJson}"
     const val PARSE_RECIPE = "parse_recipe"
     const val USER_DETAIL = "user_detail/{userId}"
     
@@ -55,6 +55,7 @@ fun UmamiApp(tokenManager: TokenManager) {
     val isLoggedIn = authState is AuthState.Success
     val username = if (authState is AuthState.Success) (authState as AuthState.Success).user.username else null
     val currentUserId = if (authState is AuthState.Success) (authState as AuthState.Success).user.id else null
+    val avatarUrl = if (authState is AuthState.Success) (authState as AuthState.Success).user.avatarUrl else null
 
     var showAuthModal by remember { mutableStateOf(false) }
 
@@ -72,6 +73,7 @@ fun UmamiApp(tokenManager: TokenManager) {
                 UmamiTopBar(
                     isLoggedIn = isLoggedIn,
                     username = username,
+                    avatarUrl = avatarUrl,
                     onAuthClick = { showAuthModal = true }
                 )
             }
@@ -128,7 +130,7 @@ fun UmamiApp(tokenManager: TokenManager) {
                 }
             }
             composable(Routes.PROFILE) {
-                UmamiProfileScreen(navController = navController, isLoggedIn = isLoggedIn, onLoginClick = { showAuthModal = true }, user = if (authState is AuthState.Success) (authState as AuthState.Success).user else null)
+                UmamiProfileScreen(navController = navController, isLoggedIn = isLoggedIn, onLoginClick = { showAuthModal = true }, user = if (authState is AuthState.Success) (authState as AuthState.Success).user else null, authViewModel = authViewModel)
             }
             composable(
                 route = Routes.RECIPE_DETAIL,
@@ -141,8 +143,16 @@ fun UmamiApp(tokenManager: TokenManager) {
                 val tab = backStackEntry.arguments?.getString("tab") ?: ""
                 UmamiRecipeDetailScreen(navController = navController, recipeId = recipeId, initialTab = tab, currentUserId = currentUserId)
             }
-            composable(Routes.ADD_RECIPE) {
-                AddRecipeScreen(navController = navController)
+            composable(
+                route = Routes.ADD_RECIPE,
+                arguments = listOf(
+                    navArgument("recipeId") { type = NavType.StringType; nullable = true; defaultValue = null },
+                    navArgument("draftJson") { type = NavType.StringType; nullable = true; defaultValue = null }
+                )
+            ) { backStackEntry ->
+                val recipeId = backStackEntry.arguments?.getString("recipeId")
+                val draftJson = backStackEntry.arguments?.getString("draftJson")
+                AddRecipeScreen(navController = navController, recipeId = recipeId, draftJson = draftJson)
             }
             composable(Routes.CHAT) {
                 if (!isLoggedIn) {

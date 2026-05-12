@@ -8,13 +8,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.BookmarkBorder
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Send
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,10 +20,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.example.diplom.data.ApiClient
-import com.example.diplom.data.RecipeDetailState
-import com.example.diplom.data.RecipeDetailViewModel
-import com.example.diplom.data.normalizeImageUrl
+import com.example.diplom.data.*
 import com.example.diplom.ui.theme.InterFontFamily
 import com.example.diplom.ui.theme.UmamiOrange
 import kotlinx.coroutines.launch
@@ -90,6 +81,54 @@ fun UmamiRecipeDetailScreen(
                         )
                     }
 
+                    if (state is RecipeDetailState.Success) {
+                        val recipe = (state as RecipeDetailState.Success).recipe
+                        if (recipe.User?.id == currentUserId) {
+                            var showDeleteDialog by remember { mutableStateOf(false) }
+                            
+                            IconButton(onClick = {
+                                navController.navigate("add_recipe?recipeId=${recipe.id}")
+                            }) {
+                                Icon(Icons.Default.Edit, contentDescription = "Редактировать", tint = Color.Gray)
+                            }
+                            
+                            IconButton(onClick = { showDeleteDialog = true }) {
+                                Icon(Icons.Default.Delete, contentDescription = "Удалить", tint = Color.Red.copy(alpha = 0.7f))
+                            }
+                            
+                            if (showDeleteDialog) {
+                                AlertDialog(
+                                    onDismissRequest = { showDeleteDialog = false },
+                                    title = { Text("Удалить рецепт?", fontFamily = InterFontFamily, fontWeight = FontWeight.Bold) },
+                                    text = { Text("Вы уверены? Это действие нельзя отменить.", fontFamily = InterFontFamily) },
+                                    confirmButton = {
+                                        TextButton(
+                                            onClick = {
+                                                showDeleteDialog = false
+                                                scope.launch {
+                                                    try {
+                                                        ApiClient.recipeService.deleteRecipe(recipeId)
+                                                        Toast.makeText(context, "Рецепт удален", Toast.LENGTH_SHORT).show()
+                                                        navController.popBackStack()
+                                                    } catch (e: Exception) {
+                                                        Toast.makeText(context, "Ошибка удаления", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                }
+                                            }
+                                        ) {
+                                            Text("Удалить", color = Color.Red, fontWeight = FontWeight.Bold)
+                                        }
+                                    },
+                                    dismissButton = {
+                                        TextButton(onClick = { showDeleteDialog = false }) {
+                                            Text("Отмена")
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+
                     IconButton(onClick = {
                         if (currentUserId.isNullOrBlank()) {
                             Toast.makeText(context, "Нужно войти в аккаунт", Toast.LENGTH_SHORT).show()
@@ -103,6 +142,29 @@ fun UmamiRecipeDetailScreen(
                             if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                             contentDescription = "Лайк",
                             tint = if (isLiked) UmamiOrange else Color.Gray
+                        )
+                    }
+
+                    var showReportDialog by remember { mutableStateOf(false) }
+                    IconButton(onClick = { 
+                        if (currentUserId.isNullOrBlank()) {
+                            Toast.makeText(context, "Нужно войти в аккаунт", Toast.LENGTH_SHORT).show()
+                        } else {
+                            showReportDialog = true 
+                        }
+                    }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "Пожаловаться", tint = Color.Gray)
+                    }
+
+                    if (showReportDialog) {
+                        ReportDialog(
+                            onDismiss = { showReportDialog = false },
+                            onSubmit = { reason, desc ->
+                                viewModel.report("recipe", recipeId = recipeId.toLongOrNull(), reason = reason, description = desc) {
+                                    Toast.makeText(context, "Жалоба отправлена", Toast.LENGTH_SHORT).show()
+                                    showReportDialog = false
+                                }
+                            }
                         )
                     }
                 }
@@ -126,7 +188,39 @@ fun UmamiRecipeDetailScreen(
                 }
 
                 is RecipeDetailState.Error -> {
-                    item { Text("Ошибка: ${s.message}", color = Color.Red, modifier = Modifier.padding(20.dp)) }
+                    item {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(40.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = UmamiOrange,
+                                modifier = Modifier.size(48.dp)
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                "Не удалось загрузить рецепт",
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = InterFontFamily,
+                                color = Color.DarkGray
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "Проверьте подключение к интернету",
+                                color = Color.Gray,
+                                fontFamily = InterFontFamily
+                            )
+                            Spacer(modifier = Modifier.height(24.dp))
+                            Button(
+                                onClick = { viewModel.loadRecipe(recipeId, currentUserId) },
+                                colors = ButtonDefaults.buttonColors(containerColor = UmamiOrange)
+                            ) {
+                                Text("Попробовать снова", fontFamily = InterFontFamily)
+                            }
+                        }
+                    }
                 }
 
                 is RecipeDetailState.Success -> {
@@ -179,7 +273,13 @@ fun UmamiRecipeDetailScreen(
                                 color = Color(0xFFF9F9F9),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Row(
+                                    modifier = Modifier
+                                        .padding(12.dp)
+                                        .fillMaxWidth()
+                                        .clickable { recipe.User.id.let { navController.navigate("user_detail/$it") } },
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
                                     if (!recipe.User.avatarUrl.isNullOrBlank()) {
                                         coil.compose.AsyncImage(
                                             model = normalizeImageUrl(recipe.User.avatarUrl),
@@ -376,20 +476,19 @@ fun UmamiRecipeDetailScreen(
                             }
 
                             3 -> {
+                                var replyingTo by remember { mutableStateOf<Comment?>(null) }
+                                
                                 Column {
                                     Text("Отзывы (${comments.size})", fontWeight = FontWeight.Bold, fontFamily = InterFontFamily)
                                     Spacer(modifier = Modifier.height(8.dp))
+                                    
                                     comments.forEach { comment ->
-                                        Surface(
-                                            color = Color(0xFFF9F9F9),
-                                            shape = RoundedCornerShape(12.dp),
-                                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
-                                        ) {
-                                            Column(modifier = Modifier.padding(12.dp)) {
-                                                Text(comment.author?.name ?: comment.author?.username ?: "Пользователь", fontWeight = FontWeight.Bold, fontSize = 14.sp, fontFamily = InterFontFamily)
-                                                Text(comment.content, fontSize = 14.sp, fontFamily = InterFontFamily, modifier = Modifier.padding(top = 4.dp))
-                                            }
-                                        }
+                                        CommentItem(
+                                            comment = comment,
+                                            currentUserId = currentUserId,
+                                            onLikeClick = { viewModel.toggleCommentLike(it) },
+                                            onReplyClick = { replyingTo = it }
+                                        )
                                     }
 
                                     Spacer(modifier = Modifier.height(16.dp))
@@ -414,17 +513,51 @@ fun UmamiRecipeDetailScreen(
                                         Slider(value = spicy.toFloat(), onValueChange = { spicy = it.toInt().coerceIn(1, 5) }, valueRange = 1f..5f, steps = 3)
                                         Slider(value = umami.toFloat(), onValueChange = { umami = it.toInt().coerceIn(1, 5) }, valueRange = 1f..5f, steps = 3)
 
+                                        if (replyingTo != null) {
+                                            Surface(
+                                                color = UmamiOrange.copy(alpha = 0.1f),
+                                                shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.SpaceBetween
+                                                ) {
+                                                    Text(
+                                                        "Ответ пользователю ${replyingTo!!.author?.username}",
+                                                        fontSize = 12.sp,
+                                                        color = UmamiOrange,
+                                                        fontWeight = FontWeight.Bold
+                                                    )
+                                                    IconButton(onClick = { replyingTo = null }, modifier = Modifier.size(20.dp)) {
+                                                        Icon(Icons.Default.Close, contentDescription = "Отмена", tint = UmamiOrange)
+                                                    }
+                                                }
+                                            }
+                                        }
+
                                         OutlinedTextField(
                                             value = newComment,
                                             onValueChange = { newComment = it },
-                                            placeholder = { Text("Написать отзыв...") },
+                                            placeholder = { Text(if (replyingTo != null) "Ваш ответ..." else "Написать отзыв...") },
                                             modifier = Modifier.fillMaxWidth(),
-                                            shape = RoundedCornerShape(24.dp),
+                                            shape = if (replyingTo != null) RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp) else RoundedCornerShape(24.dp),
                                             trailingIcon = {
                                                 IconButton(onClick = {
                                                     if (newComment.isNotBlank()) {
-                                                        viewModel.postComment(recipeId, newComment, rating, sweet, sour, salty, spicy, umami)
+                                                        viewModel.postComment(
+                                                            recipeId, newComment, 
+                                                            if (replyingTo == null) rating else null, 
+                                                            if (replyingTo == null) sweet else null, 
+                                                            if (replyingTo == null) sour else null, 
+                                                            if (replyingTo == null) salty else null, 
+                                                            if (replyingTo == null) spicy else null, 
+                                                            if (replyingTo == null) umami else null,
+                                                            parentCommentId = replyingTo?.id
+                                                        )
                                                         newComment = ""
+                                                        replyingTo = null
                                                     }
                                                 }) {
                                                     Icon(Icons.Default.Send, contentDescription = "Отправить", tint = UmamiOrange)
@@ -438,6 +571,82 @@ fun UmamiRecipeDetailScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun CommentItem(
+    comment: Comment,
+    currentUserId: String?,
+    onLikeClick: (String) -> Unit,
+    onReplyClick: (Comment) -> Unit,
+    depth: Int = 0
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    
+    Column(modifier = Modifier.padding(start = (depth * 20).dp)) {
+        Surface(
+            color = if (depth > 0) Color(0xFFF0F0F0) else Color(0xFFF9F9F9),
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+        ) {
+            Column(modifier = Modifier.padding(12.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        comment.author?.name ?: comment.author?.username ?: "Пользователь",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        fontFamily = InterFontFamily,
+                        modifier = Modifier.weight(1f)
+                    )
+                    
+                    // Like button
+                    val cLiked = comment.isLiked ?: false
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clickable { 
+                            if (currentUserId != null) onLikeClick(comment.id)
+                            else Toast.makeText(context, "Войдите, чтобы ставить лайки", Toast.LENGTH_SHORT).show()
+                        }
+                    ) {
+                        Text("${comment.likeCount ?: 0}", fontSize = 12.sp, color = if (cLiked) UmamiOrange else Color.Gray)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            if (cLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = if (cLiked) UmamiOrange else Color.Gray
+                        )
+                    }
+                }
+                
+                Text(comment.content, fontSize = 14.sp, fontFamily = InterFontFamily, modifier = Modifier.padding(top = 4.dp))
+                
+                Row(modifier = Modifier.padding(top = 8.dp)) {
+                    Text(
+                        "Ответить",
+                        fontSize = 12.sp,
+                        color = UmamiOrange,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clickable { 
+                            if (currentUserId != null) onReplyClick(comment)
+                            else Toast.makeText(context, "Войдите, чтобы отвечать", Toast.LENGTH_SHORT).show()
+                        }
+                    )
+                }
+            }
+        }
+        
+        // Render replies
+        comment.replies?.forEach { reply ->
+            CommentItem(
+                comment = reply,
+                currentUserId = currentUserId,
+                onLikeClick = onLikeClick, 
+                onReplyClick = onReplyClick,
+                depth = depth + 1
+            )
         }
     }
 }

@@ -13,7 +13,9 @@ data class Comment(
     @SerializedName("taste_umami") val tasteUmami: Int? = null,
     @SerializedName("created_at") val createdAt: String?,
     @SerializedName("Author") val author: User?,
-    @SerializedName("Replies") val replies: List<Comment>? = emptyList()
+    @SerializedName("Replies") val replies: List<Comment>? = emptyList(),
+    @SerializedName("isLiked") val isLiked: Boolean? = false,
+    @SerializedName("likeCount") val likeCount: Int? = 0
 )
 
 data class CommentRequest(
@@ -23,5 +25,6 @@ data class CommentRequest(
     @SerializedName("taste_sour") val tasteSour: Int? = null,
     @SerializedName("taste_salty") val tasteSalty: Int? = null,
     @SerializedName("taste_spicy") val tasteSpicy: Int? = null,
-    @SerializedName("taste_umami") val tasteUmami: Int? = null
+    @SerializedName("taste_umami") val tasteUmami: Int? = null,
+    @SerializedName("parent_comment_id") val parentCommentId: String? = null
 )

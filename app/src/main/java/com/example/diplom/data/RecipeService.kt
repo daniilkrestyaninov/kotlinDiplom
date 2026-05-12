@@ -29,7 +29,7 @@ interface RecipeService {
     suspend fun createRecipe(@Body request: CreateRecipeRequest): Recipe
 
     @PUT("recipes/{id}")
-    suspend fun updateRecipe(@Path("id") id: String, @Body request: Map<String, Any>): Recipe
+    suspend fun updateRecipe(@Path("id") id: String, @Body request: Map<String, @JvmSuppressWildcards Any>): Recipe
 
     @DELETE("recipes/{id}")
     suspend fun deleteRecipe(@Path("id") id: String)
@@ -45,6 +45,9 @@ interface RecipeService {
 
     @POST("recipes/{id}/comments")
     suspend fun postComment(@Path("id") id: String, @Body request: CommentRequest)
+
+    @POST("comments/{id}/like")
+    suspend fun toggleCommentLike(@Path("id") id: String): Map<String, Boolean>
 
     @GET("meta/categories")
     suspend fun getCategories(): List<Category>

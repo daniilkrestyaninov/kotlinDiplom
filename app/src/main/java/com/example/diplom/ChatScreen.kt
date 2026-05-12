@@ -26,6 +26,9 @@ import com.example.diplom.ui.theme.*
 import com.example.diplom.ui.navigation.Routes
 import kotlinx.coroutines.launch
 
+import com.google.gson.Gson
+import java.net.URLEncoder
+
 sealed class ChatMessage {
     data class Text(val content: String, val isUser: Boolean) : ChatMessage()
     data class RecipeSuggestion(val suggestion: AiRecipeSuggestion) : ChatMessage()
@@ -65,7 +68,7 @@ fun UmamiChatScreen(navController: NavController) {
                 },
                 actions = {
                     IconButton(onClick = { }) {
-                        Icon(Icons.Default.MoreHoriz, contentDescription = "More")
+                        Icon(Icons.Default.MoreVert, contentDescription = "More")
                     }
                 }
             )
@@ -117,7 +120,7 @@ fun UmamiChatScreen(navController: NavController) {
                                         }
                                     } catch (e: Exception) {
                                         android.util.Log.e("Chat", "AI Request failed", e)
-                                        messages.add(ChatMessage.Text("Ошибка связи с шефом: ${e.localizedMessage}", false))
+                                        messages.add(ChatMessage.Text("Не удалось связаться с шефом. Проверьте подключение к интернету и попробуйте ещё раз.", false))
                                     } finally {
                                         isLoading = false
                                     }
@@ -150,7 +153,7 @@ fun UmamiChatScreen(navController: NavController) {
             items(messages) { msg ->
                 when (msg) {
                     is ChatMessage.Text -> MessageBubble(msg.content, msg.isUser)
-                    is ChatMessage.RecipeSuggestion -> AiRecipeCard(msg.suggestion)
+                    is ChatMessage.RecipeSuggestion -> AiRecipeCard(msg.suggestion, navController)
                 }
             }
         }
@@ -190,7 +193,7 @@ fun MessageBubble(text: String, isUser: Boolean) {
 }
 
 @Composable
-fun AiRecipeCard(suggestion: AiRecipeSuggestion) {
+fun AiRecipeCard(suggestion: AiRecipeSuggestion, navController: NavController) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
@@ -246,7 +249,10 @@ fun AiRecipeCard(suggestion: AiRecipeSuggestion) {
             Spacer(modifier = Modifier.height(16.dp))
             
             Button(
-                onClick = { },
+                onClick = {
+                    AiDraft.suggestion = suggestion
+                    navController.navigate(Routes.ADD_RECIPE)
+                },
                 colors = ButtonDefaults.buttonColors(containerColor = UmamiCream),
                 shape = RoundedCornerShape(20.dp),
                 modifier = Modifier.fillMaxWidth().height(40.dp)
