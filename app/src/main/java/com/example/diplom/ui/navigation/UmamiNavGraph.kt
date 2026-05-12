@@ -43,6 +43,7 @@ object Routes {
     const val ADD_RECIPE = "add_recipe?recipeId={recipeId}&draftJson={draftJson}"
     const val PARSE_RECIPE = "parse_recipe"
     const val USER_DETAIL = "user_detail/{userId}"
+    const val NOTIFICATIONS = "notifications"
     
     fun recipeDetail(recipeId: String, tab: String = "") = "recipe_detail/$recipeId?tab=$tab"
     fun userDetail(userId: String) = "user_detail/$userId"
@@ -56,6 +57,15 @@ fun UmamiApp(tokenManager: TokenManager) {
     val username = if (authState is AuthState.Success) (authState as AuthState.Success).user.username else null
     val currentUserId = if (authState is AuthState.Success) (authState as AuthState.Success).user.id else null
     val avatarUrl = if (authState is AuthState.Success) (authState as AuthState.Success).user.avatarUrl else null
+
+    val notificationViewModel: com.example.diplom.data.NotificationViewModel = viewModel()
+    val unreadCount by notificationViewModel.unreadCount.collectAsState()
+
+    LaunchedEffect(isLoggedIn) {
+        if (isLoggedIn) {
+            notificationViewModel.refreshUnreadCount()
+        }
+    }
 
     var showAuthModal by remember { mutableStateOf(false) }
 
@@ -74,7 +84,15 @@ fun UmamiApp(tokenManager: TokenManager) {
                     isLoggedIn = isLoggedIn,
                     username = username,
                     avatarUrl = avatarUrl,
-                    onAuthClick = { showAuthModal = true }
+                    unreadNotifications = unreadCount,
+                    onAuthClick = { showAuthModal = true },
+                    onNotificationClick = {
+                        if (isLoggedIn) {
+                            navController.navigate(Routes.NOTIFICATIONS)
+                        } else {
+                            showAuthModal = true
+                        }
+                    }
                 )
             }
         },
@@ -167,6 +185,13 @@ fun UmamiApp(tokenManager: TokenManager) {
             }
             composable(Routes.PARSE_RECIPE) {
                 com.example.diplom.UmamiParseRecipeScreen(navController = navController)
+            }
+            composable(Routes.NOTIFICATIONS) {
+                if (!isLoggedIn) {
+                    com.example.diplom.LoginRequiredScreen(onLoginClick = { showAuthModal = true })
+                } else {
+                    com.example.diplom.NotificationScreen(navController = navController)
+                }
             }
         }
         

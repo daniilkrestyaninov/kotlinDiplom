@@ -108,12 +108,17 @@ fun UmamiProfileScreen(
                 profileData = userService.getUserProfile(user.id)
             } catch (_: Exception) {}
 
-            // Load own recipes including private
-            isLoadingRecipes = true
-            try {
-                myRecipes = userService.getUserRecipes(user.id)
-            } catch (_: Exception) {}
-            isLoadingRecipes = false
+            // Use recipes from profile data if available
+            if (profileData?.recipes != null) {
+                myRecipes = profileData!!.recipes!!
+            } else {
+                // Fallback
+                isLoadingRecipes = true
+                try {
+                    myRecipes = userService.getUserRecipes(user.id)
+                } catch (_: Exception) {}
+                isLoadingRecipes = false
+            }
         }
     }
 

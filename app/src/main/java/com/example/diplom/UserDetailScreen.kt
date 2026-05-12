@@ -53,6 +53,8 @@ fun UmamiUserDetailScreen(
                 loadError = null
                 profileData = userService.getUserProfile(userId)
                 friends = try { userService.getFollowing(userId) } catch (_: Exception) { emptyList() }
+                
+                // Используем ТОЛЬКО этот запрос, так как он работал в Кабинете
                 userRecipes = try { userService.getUserRecipes(userId) } catch (_: Exception) { emptyList() }
                 
                 // Check if following

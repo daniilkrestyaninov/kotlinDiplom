@@ -168,7 +168,9 @@ fun UmamiTopBar(
     isLoggedIn: Boolean = false,
     username: String? = null,
     avatarUrl: String? = null,
-    onAuthClick: () -> Unit = {}
+    unreadNotifications: Int = 0,
+    onAuthClick: () -> Unit = {},
+    onNotificationClick: () -> Unit = {}
 ) {
     TopAppBar(
         colors = TopAppBarDefaults.topAppBarColors(
@@ -185,15 +187,29 @@ fun UmamiTopBar(
             )
         },
         actions = {
-            // Notification Bell from drawable (contains its own circle and border)
-            Image(
-                painter = painterResource(id = R.drawable.notification),
-                contentDescription = "Notifications",
-                modifier = Modifier
-                    .size(42.dp) // Slightly scale up from 36dp for better visibility
-                    .clickable { /* TODO */ },
-                contentScale = ContentScale.Fit
-            )
+            // Notification Bell with Badge
+            BadgedBox(
+                badge = {
+                    if (unreadNotifications > 0) {
+                        Badge(
+                            containerColor = Color(0xFFFF6B6B),
+                            contentColor = Color.White
+                        ) {
+                            Text(unreadNotifications.toString())
+                        }
+                    }
+                },
+                modifier = Modifier.padding(end = 8.dp)
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.notification),
+                    contentDescription = "Notifications",
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clickable { onNotificationClick() },
+                    contentScale = ContentScale.Fit
+                )
+            }
             
             Spacer(modifier = Modifier.width(8.dp))
             
