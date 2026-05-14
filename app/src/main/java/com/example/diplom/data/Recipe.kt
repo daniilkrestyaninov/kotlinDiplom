@@ -33,7 +33,18 @@ data class Recipe(
     var rating: Double? = null,
     @SerializedName("is_liked") var isLiked: Boolean? = null,
     var isFavorited: Boolean? = null,
+    @SerializedName("cooked_count") var cookedCount: Int? = null,
+    @SerializedName("personal_note") var personalNote: String? = null,
+    @SerializedName("taste_averages") val tasteAverages: TasteAverages? = null,
     val User: User? = null
+)
+
+data class TasteAverages(
+    val sweet: String?,
+    val sour: String?,
+    val salty: String?,
+    val spicy: String?,
+    val umami: String?
 )
 
 data class RecipeLike(
@@ -66,7 +77,9 @@ data class User(
     val email: String? = null,
     val bio: String? = null,
     @SerializedName("avatar_url") val avatarUrl: String?,
-    @SerializedName("is_following") var isFollowing: Boolean? = null
+    @SerializedName("is_following") var isFollowing: Boolean? = null,
+    val role: String? = "user",
+    @SerializedName("is_verified") val isVerified: Boolean? = false
 )
 
 data class Category(

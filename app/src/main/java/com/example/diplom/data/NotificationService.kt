@@ -6,6 +6,9 @@ import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.Path
 import retrofit2.http.Query
+import retrofit2.http.POST
+import retrofit2.http.Body
+import retrofit2.Response
 
 data class NotificationResponse(
     val notifications: List<Notification>,
@@ -21,6 +24,11 @@ data class NotificationPagination(
 
 data class UnreadCountResponse(
     val count: Int
+)
+
+data class DeviceTokenRequest(
+    val token: String,
+    val device_type: String = "android"
 )
 
 interface NotificationService {
@@ -41,4 +49,7 @@ interface NotificationService {
 
     @DELETE("notifications")
     suspend fun deleteAll()
+
+    @POST("notifications/register-device")
+    suspend fun registerDevice(@Body request: DeviceTokenRequest): Response<Unit>
 }

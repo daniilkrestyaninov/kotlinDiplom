@@ -9,6 +9,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -42,6 +43,7 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import com.google.gson.Gson
+import com.example.diplom.data.local.*
 import java.io.File
 
 data class StepData(
@@ -61,12 +63,36 @@ data class SelectedIngredientUi(
 
 val UNIT_OPTIONS = listOf("г", "кг", "мл", "л", "шт", "ст. л.", "ч. л.", "стакан", "зубчик", "щепотка", "по вкусу")
 
+val INGREDIENT_UNIT_SUGGESTIONS = mapOf(
+    "Мука" to "г",
+    "Сахар" to "г",
+    "Молоко" to "мл",
+    "Вода" to "мл",
+    "Яйцо" to "шт",
+    "Масло сливочное" to "г",
+    "Масло растительное" to "мл",
+    "Соль" to "щепотка",
+    "Перец" to "по вкусу",
+    "Лук" to "шт",
+    "Чеснок" to "зубчик",
+    "Картофель" to "г",
+    "Мясо" to "г",
+    "Курица" to "г",
+    "Рис" to "г",
+    "Макароны" to "г",
+    "Сливки" to "мл",
+    "Сыр" to "г"
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddRecipeScreen(navController: NavController, recipeId: String? = null, draftJson: String? = null) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val service = ApiClient.recipeService
+
+    val db = remember { UmamiDatabase.getDatabase(context) }
+    val dao = db.dao()
 
     // Stepper state
     var currentStep by remember { mutableIntStateOf(0) }
@@ -173,6 +199,7 @@ fun AddRecipeScreen(navController: NavController, recipeId: String? = null, draf
             ingredients = service.getIngredients()
 
             if (recipeId != null) {
+                // ... (existing edit logic)
                 isLoading = true
                 val r = service.getRecipeById(recipeId)
                 title = r.title ?: ""
@@ -199,6 +226,7 @@ fun AddRecipeScreen(navController: NavController, recipeId: String? = null, draf
                 if (steps.isEmpty()) steps.add(StepData())
                 isLoading = false
             } else if (draftJson != null || AiDraft.suggestion != null) {
+                // ... (existing AI logic)
                 val suggestion = if (draftJson != null) Gson().fromJson(draftJson, AiRecipeSuggestion::class.java) else null
                 val draft = AiDraft.suggestion
                 
@@ -218,8 +246,36 @@ fun AddRecipeScreen(navController: NavController, recipeId: String? = null, draf
                     ?: emptyList()).forEach { steps.add(it) }
                 if (steps.isEmpty()) steps.add(StepData())
                 AiDraft.suggestion = null
+            } else {
+                // Try load from Room Draft
+                val savedDraft = dao.getDraft()
+                if (savedDraft != null && savedDraft.title.isNotBlank()) {
+                    // We could show a dialog, but for now just auto-restore
+                    title = savedDraft.title
+                    description = savedDraft.description
+                    mainImageUrl = savedDraft.mainImageUrl
+                    selectedIngredients = Gson().fromJson(savedDraft.ingredientsJson, Array<SelectedIngredientUi>::class.java).toList()
+                    val savedSteps = Gson().fromJson(savedDraft.stepsJson, Array<StepData>::class.java).toList()
+                    steps.clear()
+                    steps.addAll(savedSteps)
+                    Toast.makeText(context, "Черновик восстановлен", Toast.LENGTH_SHORT).show()
+                }
             }
         } catch (e: Exception) { isLoading = false }
+    }
+
+    // Auto-Save Effect
+    LaunchedEffect(title, description, selectedIngredients, steps.size, mainImageUrl) {
+        if (recipeId == null && !isGenerated && title.isNotBlank()) {
+            val draft = LocalRecipeDraft(
+                title = title,
+                description = description,
+                ingredientsJson = Gson().toJson(selectedIngredients),
+                stepsJson = Gson().toJson(steps.toList()),
+                mainImageUrl = mainImageUrl
+            )
+            dao.saveDraft(draft)
+        }
     }
 
     Scaffold(
@@ -332,6 +388,7 @@ fun AddRecipeScreen(navController: NavController, recipeId: String? = null, draf
                                             ).filterValues { it != null } as Map<String, Any>)
                                         }
 
+                                        dao.deleteDraft() // Clear draft on success
                                         Toast.makeText(context, "Готово!", Toast.LENGTH_SHORT).show()
                                         navController.popBackStack()
                                     } catch (e: Exception) {
@@ -439,7 +496,20 @@ fun IngredientsStep(selected: List<SelectedIngredientUi>, onUpdate: (List<Select
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Box(modifier = Modifier.weight(1f)) {
-                            OutlinedTextField(value = ing.quantity, onValueChange = { q -> onUpdate(selected.toMutableList().apply { this[index] = ing.copy(quantity = q) }) }, placeholder = {Text("Кол-во", fontSize = 12.sp)}, textStyle = LocalTextStyle.current.copy(fontSize = 14.sp), modifier = Modifier.height(52.dp), shape = RoundedCornerShape(8.dp))
+                            OutlinedTextField(
+                                value = ing.quantity,
+                                onValueChange = { q -> 
+                                    // Allow only digits and one dot/comma
+                                    if (q.isEmpty() || q.matches(Regex("""^\d*[.,]?\d*$"""))) {
+                                        onUpdate(selected.toMutableList().apply { this[index] = ing.copy(quantity = q.replace(",", ".")) })
+                                    }
+                                },
+                                placeholder = {Text("Кол-во", fontSize = 12.sp)},
+                                textStyle = LocalTextStyle.current.copy(fontSize = 14.sp),
+                                modifier = Modifier.height(52.dp),
+                                shape = RoundedCornerShape(8.dp),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                            )
                         }
                         Box(modifier = Modifier.weight(1f)) {
                            var expanded by remember { mutableStateOf(false) }
@@ -541,7 +611,7 @@ fun FinalStep(isPrivate: Boolean, onPrivate: (Boolean) -> Unit, isGenerated: Boo
 fun CustomTextField(label: String, value: String, onValueChange: (String) -> Unit, keyboardType: KeyboardType = KeyboardType.Text, singleLine: Boolean = true, minLines: Int = 1, placeholder: String = "") {
     Column {
         Text(label, fontWeight = FontWeight.Bold, fontSize = 14.sp, fontFamily = InterFontFamily, modifier = Modifier.padding(bottom = 4.dp))
-        OutlinedTextField(value = value, onValueChange = onValueChange, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = keyboardType), singleLine = singleLine, minLines = minLines, placeholder = { if(placeholder.isNotBlank()) Text(placeholder, fontSize = 14.sp) }, colors = OutlinedTextFieldDefaults.colors(unfocusedBorderColor = Color(0xFFE5E5E5), focusedBorderColor = UmamiOrange))
+        OutlinedTextField(value = value, onValueChange = onValueChange, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), keyboardOptions = KeyboardOptions(keyboardType = keyboardType), singleLine = singleLine, minLines = minLines, placeholder = { if(placeholder.isNotBlank()) Text(placeholder, fontSize = 14.sp) }, colors = OutlinedTextFieldDefaults.colors(unfocusedBorderColor = Color(0xFFE5E5E5), focusedBorderColor = UmamiOrange))
     }
 }
 
@@ -585,7 +655,12 @@ fun IngredientSelectionDialog(all: List<Ingredient>, selected: List<SelectedIngr
                 }
                 items(filtered) { ing ->
                     val isAdded = selected.any { it.id == ing.id.toIntOrNull() }
-                    Row(modifier = Modifier.fillMaxWidth().clickable { if(!isAdded) onUpdate(selected + SelectedIngredientUi(id = ing.id.toIntOrNull(), name = ing.name)) }.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Row(modifier = Modifier.fillMaxWidth().clickable { 
+                        if(!isAdded) {
+                            val suggestedUnit = INGREDIENT_UNIT_SUGGESTIONS.entries.find { it.key.equals(ing.name, ignoreCase = true) }?.value ?: ""
+                            onUpdate(selected + SelectedIngredientUi(id = ing.id.toIntOrNull(), name = ing.name, unit = suggestedUnit))
+                        }
+                    }.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(ing.name, modifier = Modifier.weight(1f))
                         if(isAdded) Icon(Icons.Default.Check, null, tint = UmamiOrange)
                     }

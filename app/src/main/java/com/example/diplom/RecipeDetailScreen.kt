@@ -264,6 +264,14 @@ fun UmamiRecipeDetailScreen(
                             Text(recipe.description, fontFamily = InterFontFamily, color = Color.Gray, fontSize = 14.sp)
                         }
 
+                        if (currentUserId != null) {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            PersonalNoteSection(
+                                initialNote = recipe.personalNote ?: "",
+                                onSave = { viewModel.savePersonalNote(recipeId, it) }
+                            )
+                        }
+
                         if (recipe.User != null) {
                             Spacer(modifier = Modifier.height(12.dp))
                             val isFollowing = recipe.User.isFollowing ?: false
@@ -343,6 +351,23 @@ fun UmamiRecipeDetailScreen(
                             DetailStat("${recipe.cookingTime ?: 0} мин", "готовка")
                             DetailStat("${recipe.portion ?: "—"} порц.", "выход")
                             DetailStat("${recipe.calorific ?: "—"}", "ккал")
+                        }
+
+                        if (currentUserId != null) {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(
+                                onClick = { 
+                                    viewModel.markAsCooked(recipeId)
+                                    Toast.makeText(context, "Отмечено как приготовленное!", Toast.LENGTH_SHORT).show()
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
+                                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color.White)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Приготовлено (${recipe.cookedCount ?: 0})", fontWeight = FontWeight.Bold, fontFamily = InterFontFamily)
+                            }
                         }
 
                         Spacer(modifier = Modifier.height(24.dp))
@@ -675,4 +700,69 @@ fun NutritionRow(label: String, value: String) {
         Text(label, fontFamily = InterFontFamily, color = Color.Gray, fontSize = 14.sp)
         Text(value, fontFamily = InterFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp)
     }
+}
+@Composable
+fun PersonalNoteSection(initialNote: String, onSave: (String) -> Unit) {
+    var note by remember { mutableStateOf(initialNote) }
+    var isEditing by remember { mutableStateOf(false) }
+
+    Surface(
+        color = Color(0xFFFFF9C4), // Light yellow for note
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.StickyNote2, contentDescription = null, tint = Color(0xFFFBC02D))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Личная заметка", fontWeight = FontWeight.Bold, fontSize = 14.sp, fontFamily = InterFontFamily)
+                }
+                
+                if (isEditing) {
+                    TextButton(onClick = { 
+                        onSave(note)
+                        isEditing = false 
+                    }) {
+                        Text("Сохранить", color = Color(0xFFFBC02D), fontWeight = FontWeight.Bold)
+                    }
+                } else {
+                    IconButton(onClick = { isEditing = true }, modifier = Modifier.size(24.dp)) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.size(16.dp), tint = Color.Gray)
+                    }
+                }
+            }
+            
+            if (isEditing) {
+                TextField(
+                    value = note,
+                    onValueChange = { note = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedIndicatorColor = Color(0xFFFBC02D)
+                    ),
+                    placeholder = { Text("Добавьте что-то от себя...", fontSize = 13.sp) }
+                )
+            } else {
+                Text(
+                    text = if (note.isBlank()) "Нажмите, чтобы добавить заметку..." else note,
+                    fontSize = 13.sp,
+                    color = if (note.isBlank()) Color.Gray else Color.Black,
+                    fontFamily = InterFontFamily,
+                    modifier = Modifier.clickable { isEditing = true }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun Icon(imageVector: androidx.compose.ui.graphics.vector.ImageVector, contentDescription: String?, size: androidx.compose.ui.unit.Dp, tint: Color) {
+    Icon(imageVector, contentDescription, modifier = Modifier.size(size), tint = tint)
 }

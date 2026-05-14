@@ -142,4 +142,18 @@ class NotificationViewModel(private val service: NotificationService = ApiClient
             }
         }
     }
+
+    /**
+     * Отправка FCM токена на сервер для регистрации устройства.
+     */
+    fun updateFcmToken(token: String) {
+        viewModelScope.launch {
+            try {
+                service.registerDevice(DeviceTokenRequest(token))
+                android.util.Log.d("NotificationVM", "FCM токен успешно зарегистрирован")
+            } catch (e: Exception) {
+                android.util.Log.e("NotificationVM", "Ошибка регистрации FCM токена", e)
+            }
+        }
+    }
 }

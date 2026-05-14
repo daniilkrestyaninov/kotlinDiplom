@@ -203,4 +203,35 @@ class RecipeDetailViewModel : ViewModel() {
             }
         }
     }
+
+    fun savePersonalNote(recipeId: String, note: String) {
+        viewModelScope.launch {
+            try {
+                recipeService.updatePersonalNote(recipeId, mapOf("note" to note))
+                val currentState = _state.value
+                if (currentState is RecipeDetailState.Success) {
+                    _state.value = currentState.copy(recipe = currentState.recipe.copy(personalNote = note))
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("RecipeDetailVM", "Failed to save note", e)
+            }
+        }
+    }
+
+    fun markAsCooked(recipeId: String) {
+        viewModelScope.launch {
+            try {
+                recipeService.markCooked(recipeId)
+                val currentState = _state.value
+                if (currentState is RecipeDetailState.Success) {
+                    val updatedRecipe = currentState.recipe.copy(
+                        cookedCount = (currentState.recipe.cookedCount ?: 0) + 1
+                    )
+                    _state.value = currentState.copy(recipe = updatedRecipe)
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("RecipeDetailVM", "Failed to mark cooked", e)
+            }
+        }
+    }
 }

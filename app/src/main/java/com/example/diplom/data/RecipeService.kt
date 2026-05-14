@@ -49,6 +49,18 @@ interface RecipeService {
     @POST("comments/{id}/like")
     suspend fun toggleCommentLike(@Path("id") id: String): Map<String, Boolean>
 
+    @PATCH("recipes/{id}/personal-note")
+    suspend fun updatePersonalNote(@Path("id") id: String, @Body body: Map<String, String>)
+
+    @POST("recipes/{id}/cooked")
+    suspend fun markCooked(@Path("id") id: String)
+
+    @POST("recipes/{id}/favorite")
+    suspend fun addToFavorite(@Path("id") id: String)
+
+    @DELETE("recipes/{id}/favorite")
+    suspend fun removeFromFavorite(@Path("id") id: String)
+
     @GET("meta/categories")
     suspend fun getCategories(): List<Category>
 

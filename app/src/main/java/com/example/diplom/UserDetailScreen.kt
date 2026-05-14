@@ -64,6 +64,11 @@ fun UmamiUserDetailScreen(
                         isFollowing = followers.any { it.id == currentUserId }
                     } catch (_: Exception) {}
                 }
+                
+                // Прокидываем статус подписки во все рецепты пользователя
+                userRecipes = userRecipes.map { recipe ->
+                    recipe.copy(User = recipe.User?.copy(isFollowing = isFollowing))
+                }
             } catch (e: Exception) {
                 android.util.Log.e("UserDetail", "Load failed", e)
                 loadError = "Не удалось загрузить профиль"
@@ -222,6 +227,9 @@ fun UmamiUserDetailScreen(
                                                 if (isFollowing) userService.unfollow(userId)
                                                 else userService.follow(userId)
                                                 isFollowing = !isFollowing
+                                                userRecipes = userRecipes.map { recipe ->
+                                                    recipe.copy(User = recipe.User?.copy(isFollowing = isFollowing))
+                                                }
                                                 // Refresh stats
                                                 profileData = userService.getUserProfile(userId)
                                             } catch (e: Exception) {}

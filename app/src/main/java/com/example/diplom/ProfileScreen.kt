@@ -61,6 +61,9 @@ fun UmamiProfileScreen(
     var showFollowing by remember { mutableStateOf(false) }
     var followers by remember { mutableStateOf<List<User>>(emptyList()) }
     var following by remember { mutableStateOf<List<User>>(emptyList()) }
+    
+    // Verification
+    var showVerificationDialog by remember { mutableStateOf(false) }
 
     // Avatar upload
     var currentAvatarUrl by remember(user?.avatarUrl) { mutableStateOf(user?.avatarUrl) }
@@ -305,18 +308,32 @@ fun UmamiProfileScreen(
                 color = Color.White
             ) {
                 Column {
-                    ProfileMenuItem("Избранное") {
+                    if (user != null && (user.role?.lowercase() == "admin" || user.role?.lowercase() == "moderator")) {
+                        ProfileMenuItem("Панель управления", Icons.Default.AdminPanelSettings) {
+                            navController.navigate(Routes.ADMIN_PANEL)
+                        }
+                        HorizontalDivider(color = Color(0xFFF5F5F5), modifier = Modifier.padding(horizontal = 20.dp))
+                    }
+
+                    ProfileMenuItem("Избранное", Icons.Default.Bookmark) {
                         if (!isLoggedIn) onLoginClick() else navController.navigate(Routes.FAVORITES)
                     }
                     HorizontalDivider(color = Color(0xFFF5F5F5), modifier = Modifier.padding(horizontal = 20.dp))
 
-                    ProfileMenuItem("ИИ Шеф") {
+                    ProfileMenuItem("ИИ Шеф", Icons.Default.Chat) {
                         if (!isLoggedIn) onLoginClick() else navController.navigate(Routes.CHAT)
                     }
                     HorizontalDivider(color = Color(0xFFF5F5F5), modifier = Modifier.padding(horizontal = 20.dp))
 
-                    ProfileMenuItem("Парсинг сайта") {
+                    ProfileMenuItem("Парсинг сайта", Icons.Default.Link) {
                         if (!isLoggedIn) onLoginClick() else navController.navigate(Routes.PARSE_RECIPE)
+                    }
+                    
+                    if (isLoggedIn && user?.isVerified != true) {
+                        HorizontalDivider(color = Color(0xFFF5F5F5), modifier = Modifier.padding(horizontal = 20.dp))
+                        ProfileMenuItem("Подтвердить аккаунт", Icons.Default.Verified) {
+                            showVerificationDialog = true
+                        }
                     }
                 }
             }
@@ -411,6 +428,67 @@ fun UmamiProfileScreen(
             }
         )
     }
+
+    if (showVerificationDialog) {
+        RequestVerificationDialog(
+            onDismiss = { showVerificationDialog = false },
+            onSubmit = { fullName, info ->
+                scope.launch {
+                    try {
+                        userService.requestVerification(mapOf("full_name" to fullName, "info" to info))
+                        android.widget.Toast.makeText(context, "Заявка отправлена", android.widget.Toast.LENGTH_SHORT).show()
+                    } catch (e: Exception) {
+                        android.widget.Toast.makeText(context, "Ошибка отправки заявки", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
+                showVerificationDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+fun RequestVerificationDialog(onDismiss: () -> Unit, onSubmit: (name: String, info: String) -> Unit) {
+    var name by remember { mutableStateOf("") }
+    var info by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Подтверждение аккаунта", fontFamily = InterFontFamily, fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Укажите ваше реальное ФИО и краткую информацию о себе (например, шеф-повар, блогер).", fontSize = 13.sp, color = Color.Gray)
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("ФИО") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                )
+                OutlinedTextField(
+                    value = info,
+                    onValueChange = { info = it },
+                    label = { Text("Дополнительно") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    minLines = 2
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { if (name.isNotBlank()) onSubmit(name, info) },
+                colors = ButtonDefaults.buttonColors(containerColor = UmamiOrange)
+            ) {
+                Text("Отправить")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Отмена")
+            }
+        }
+    )
 }
 
 @Composable

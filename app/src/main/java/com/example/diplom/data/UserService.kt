@@ -75,4 +75,7 @@ interface UserService {
 
     @DELETE("recipes/{id}/favorite")
     suspend fun removeFavorite(@Path("id") recipeId: String)
+
+    @POST("users/verify-request")
+    suspend fun requestVerification(@Body body: Map<String, String>)
 }

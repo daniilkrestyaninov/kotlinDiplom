@@ -32,6 +32,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.*
+import com.example.diplom.AdminPanelScreen
+import com.example.diplom.VerificationScreen
 
 object Routes {
     const val MAIN = "main"
@@ -44,6 +46,11 @@ object Routes {
     const val PARSE_RECIPE = "parse_recipe"
     const val USER_DETAIL = "user_detail/{userId}"
     const val NOTIFICATIONS = "notifications"
+    const val ADMIN_PANEL = "admin_panel"
+    const val ADMIN_VERIFICATIONS = "admin_verifications"
+    const val ADMIN_USERS = "admin_users"
+    const val ADMIN_REPORTS = "admin_reports"
+    const val ADMIN_AUDIT_LOGS = "admin_audit_logs"
     
     fun recipeDetail(recipeId: String, tab: String = "") = "recipe_detail/$recipeId?tab=$tab"
     fun userDetail(userId: String) = "user_detail/$userId"
@@ -84,6 +91,7 @@ fun UmamiApp(tokenManager: TokenManager) {
                     isLoggedIn = isLoggedIn,
                     username = username,
                     avatarUrl = avatarUrl,
+                    isVerified = if (authState is AuthState.Success) (authState as AuthState.Success).user.isVerified ?: false else false,
                     unreadNotifications = unreadCount,
                     onAuthClick = { showAuthModal = true },
                     onNotificationClick = {
@@ -192,6 +200,21 @@ fun UmamiApp(tokenManager: TokenManager) {
                 } else {
                     com.example.diplom.NotificationScreen(navController = navController)
                 }
+            }
+            composable(Routes.ADMIN_PANEL) {
+                AdminPanelScreen(navController = navController)
+            }
+            composable(Routes.ADMIN_VERIFICATIONS) {
+                VerificationScreen(navController = navController)
+            }
+            composable(Routes.ADMIN_USERS) {
+                com.example.diplom.AdminUsersScreen(navController = navController)
+            }
+            composable(Routes.ADMIN_REPORTS) {
+                com.example.diplom.AdminReportsScreen(navController = navController)
+            }
+            composable(Routes.ADMIN_AUDIT_LOGS) {
+                com.example.diplom.AdminAuditLogsScreen(navController = navController)
             }
         }
         

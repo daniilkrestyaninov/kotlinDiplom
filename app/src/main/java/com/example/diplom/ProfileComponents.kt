@@ -40,13 +40,16 @@ fun ProfileStat(count: Int, label: String) {
 }
 
 @Composable
-fun ProfileMenuItem(text: String, onClick: () -> Unit) {
+fun ProfileMenuItem(text: String, icon: androidx.compose.ui.graphics.vector.ImageVector? = null, onClick: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 16.dp, horizontal = 20.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text, fontSize = 16.sp, fontFamily = InterFontFamily)
+        if (icon != null) {
+            Icon(imageVector = icon, contentDescription = null, tint = UmamiOrange, modifier = Modifier.size(24.dp))
+            Spacer(modifier = Modifier.width(16.dp))
+        }
+        Text(text, fontSize = 16.sp, fontFamily = InterFontFamily, modifier = Modifier.weight(1f))
         Icon(imageVector = Icons.Default.ChevronRight, contentDescription = null, tint = Color.Gray)
     }
 }

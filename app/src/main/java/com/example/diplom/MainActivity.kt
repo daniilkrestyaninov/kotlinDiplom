@@ -8,6 +8,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import android.util.Log
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import com.google.firebase.messaging.FirebaseMessaging
+import com.example.diplom.data.NotificationViewModel
 
 import com.example.diplom.ui.theme.DiplomTheme
 import com.example.diplom.ui.navigation.UmamiApp
@@ -17,6 +25,17 @@ import com.example.diplom.data.TokenManager
 
 // 1. Наследуемся от ComponentActivity (а не AppCompatActivity)
 class MainActivity : ComponentActivity() {
+    
+    // Launcher для запроса разрешений на уведомления (Android 13+)
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            Log.d("MainActivity", "Разрешение на уведомления получено")
+        } else {
+            Log.w("MainActivity", "Разрешение на уведомления отклонено")
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -24,8 +43,21 @@ class MainActivity : ComponentActivity() {
         val tokenManager = TokenManager(this)
         ApiClient.init(tokenManager)
         
-        // We instantiate AuthViewModel here or inside UmamiApp using a ViewModelProvider factory.
-        // For simplicity in Compose, we can just pass the tokenManager to UmamiApp and let it instantiate.
+        val notificationViewModel = NotificationViewModel()
+        
+        // Запрос разрешения (для Android 13+)
+        askNotificationPermission()
+        
+        // Получение и регистрация FCM токена
+        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            if (!task.isSuccessful) {
+                Log.w("MainActivity", "Fetching FCM registration token failed", task.exception)
+                return@addOnCompleteListener
+            }
+            val token = task.result
+            Log.d("MainActivity", "FCM Token: $token")
+            notificationViewModel.updateFcmToken(token)
+        }
 
         // 2. Вместо setContentView используем setContent
         setContent {
@@ -39,6 +71,19 @@ class MainActivity : ComponentActivity() {
                     // Вызываем наш UI-компонент (мобильный экран УМАМИ)
                     UmamiApp(tokenManager)
                 }
+            }
+        }
+    }
+
+    private fun askNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
+                PackageManager.PERMISSION_GRANTED
+            ) {
+                // Permission is already granted
+            } else {
+                // Directly ask for the permission
+                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
     }

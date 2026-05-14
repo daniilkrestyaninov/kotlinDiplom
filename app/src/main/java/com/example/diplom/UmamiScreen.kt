@@ -80,6 +80,12 @@ fun UmamiMainScreen(navController: NavController, currentUserId: String? = null,
                     onCelebrationToggle = { viewModel.toggleCelebration(it) }
                 )
             }
+            item {
+                MenuOfTheWeekSection(
+                    items = viewModel.menuOfTheWeek.value,
+                    onRecipeClick = { id -> navController.navigate("recipe_detail/$id") }
+                )
+            }
             
             when (val recipeState = state) {
                 is RecipeState.Loading -> {
@@ -168,6 +174,7 @@ fun UmamiTopBar(
     isLoggedIn: Boolean = false,
     username: String? = null,
     avatarUrl: String? = null,
+    isVerified: Boolean = false,
     unreadNotifications: Int = 0,
     onAuthClick: () -> Unit = {},
     onNotificationClick: () -> Unit = {}
@@ -229,10 +236,14 @@ fun UmamiTopBar(
                         fontSize = 10.sp,
                         fontFamily = InterFontFamily
                     )
-                    if (isLoggedIn && (com.example.diplom.data.ApiClient.retrofit.create(com.example.diplom.data.AuthService::class.java) != null)) {
-                         // Мы получаем данные пользователя из AuthViewModel в UmamiApp и прокидываем сюда
-                         // Но для простоты в TopBar добавим параметр avatarUrl в будущем. 
-                         // Сейчас просто оставим иконку, но сделаем её красивее.
+                    if (isLoggedIn && isVerified) {
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = "Verified",
+                            tint = Color.White,
+                            modifier = Modifier.size(12.dp)
+                        )
                     }
                     if (isLoggedIn) {
                         if (!avatarUrl.isNullOrBlank()) {
@@ -573,3 +584,96 @@ fun AddRecipeFab(onClick: () -> Unit = {}) {
 
 
 
+
+@Composable
+fun MenuOfTheWeekSection(items: List<MenuOfTheWeekItem>, onRecipeClick: (Long) -> Unit) {
+    if (items.isEmpty()) return
+    
+    val calendar = java.util.Calendar.getInstance()
+    val currentDay = when(calendar.get(java.util.Calendar.DAY_OF_WEEK)) {
+        java.util.Calendar.MONDAY -> 1
+        java.util.Calendar.TUESDAY -> 2
+        java.util.Calendar.WEDNESDAY -> 3
+        java.util.Calendar.THURSDAY -> 4
+        java.util.Calendar.FRIDAY -> 5
+        java.util.Calendar.SATURDAY -> 6
+        java.util.Calendar.SUNDAY -> 7
+        else -> 1
+    }
+    
+    val todayRecipes = items.filter { it.day_of_week == currentDay }
+    if (todayRecipes.isEmpty()) return
+
+    Column(modifier = Modifier.padding(vertical = 12.dp)) {
+        Text(
+            "Меню дня",
+            color = Color.Black,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 20.sp,
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
+            fontFamily = InterFontFamily
+        )
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            items(todayRecipes) { item ->
+                item.Recipe?.let { recipe ->
+                    MenuRecipeCard(recipe = recipe, onClick = { onRecipeClick(recipe.id) })
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun MenuRecipeCard(recipe: Recipe, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .width(220.dp)
+            .height(130.dp)
+            .clickable { onClick() },
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Box {
+            AsyncImage(
+                model = normalizeImageUrl(recipe.imageUrl),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        androidx.compose.ui.graphics.Brush.verticalGradient(
+                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f))
+                        )
+                    )
+            )
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(12.dp)
+            ) {
+                Text(
+                    recipe.title,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (recipe.cookingTime != null) {
+                    Text(
+                        "${recipe.cookingTime} мин",
+                        color = Color.White.copy(alpha = 0.8f),
+                        fontSize = 11.sp,
+                        fontFamily = InterFontFamily
+                    )
+                }
+            }
+        }
+    }
+}

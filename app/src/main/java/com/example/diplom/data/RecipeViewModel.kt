@@ -4,9 +4,12 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
+import com.example.diplom.data.local.*
+import kotlinx.coroutines.flow.first
 
 sealed class RecipeState {
     object Loading : RecipeState()
@@ -14,7 +17,9 @@ sealed class RecipeState {
     data class Error(val message: String) : RecipeState()
 }
 
-class RecipeViewModel : ViewModel() {
+class RecipeViewModel(application: Application) : AndroidViewModel(application) {
+    private val db = UmamiDatabase.getDatabase(application)
+    private val dao = db.dao()
     private val _state = mutableStateOf<RecipeState>(RecipeState.Loading)
     val state: State<RecipeState> = _state
 
@@ -33,6 +38,9 @@ class RecipeViewModel : ViewModel() {
 
     private val _celebrations = mutableStateOf<List<Category>>(emptyList())
     val celebrations: State<List<Category>> = _celebrations
+
+    private val _menuOfTheWeek = mutableStateOf<List<MenuOfTheWeekItem>>(emptyList())
+    val menuOfTheWeek: State<List<MenuOfTheWeekItem>> = _menuOfTheWeek
 
     // Selected filters
     var selectedCategoryId by mutableStateOf<String?>(null)
@@ -57,8 +65,26 @@ class RecipeViewModel : ViewModel() {
                 _kitchens.value = try { service.getKitchens() } catch (_: Exception) { emptyList() }
                 _cookingTypes.value = try { service.getCookingTypes() } catch (_: Exception) { emptyList() }
                 _celebrations.value = try { service.getCelebrations() } catch (_: Exception) { emptyList() }
+                _menuOfTheWeek.value = try { ApiClient.adminService.getMenuOfTheWeek() } catch (_: Exception) { emptyList() }
                 
-                // После метаданных грузим рецепты
+                // Сначала пробуем загрузить кэш
+                val cached = dao.getCachedFeed().first()
+                if (cached.isNotEmpty()) {
+                    _state.value = RecipeState.Success(cached.map { c ->
+                        Recipe(
+                            id = c.id.toLong(),
+                            title = c.title,
+                            description = c.description,
+                            imageUrl = c.imageUrl,
+                            User = User(id = "", username = c.authorName ?: "Аноним", name = c.authorName, avatarUrl = null, isVerified = c.isVerified),
+                            cookingTime = c.cookingTime,
+                            difficulty = c.difficulty,
+                            calorific = c.calorific
+                        )
+                    })
+                }
+
+                // После метаданных грузим рецепты из сети
                 fetchRecipes()
             } catch (e: Exception) {
                 android.util.Log.e("RecipeViewModel", "initialFetch failed", e)
@@ -124,6 +150,26 @@ class RecipeViewModel : ViewModel() {
                 }
                 
                 _state.value = RecipeState.Success(recipes.toList())
+
+                // Сохраняем в кэш только если это основная лента без фильтров
+                if (noFilters) {
+                    viewModelScope.launch {
+                        dao.clearFeedCache()
+                        dao.insertRecipes(recipes.map { r ->
+                            CachedRecipe(
+                                id = (r.id ?: 0).toInt(),
+                                title = r.title ?: "",
+                                description = r.description,
+                                imageUrl = r.imageUrl,
+                                authorName = r.User?.name,
+                                cookingTime = r.cookingTime,
+                                difficulty = r.difficulty,
+                                calorific = r.calorific,
+                                isVerified = r.User?.isVerified ?: false
+                            )
+                        })
+                    }
+                }
             } catch (e: Exception) {
                 android.util.Log.e("RecipeViewModel", "Fetch recipes failed", e)
                 if (_state.value !is RecipeState.Success) {
@@ -249,6 +295,19 @@ class RecipeViewModel : ViewModel() {
                 } catch (e: Exception) {
                     android.util.Log.e("RecipeViewModel", "Follow failed for author $authorId", e)
                 }
+            }
+        }
+    }
+
+    fun report(type: String, recipeId: Long? = null, reportedUserId: Long? = null, reason: String, description: String?, onComplete: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                ApiClient.reportService.createReport(
+                    ReportRequest(type = type, recipeId = recipeId, reportedUserId = reportedUserId, reason = reason, description = description)
+                )
+                onComplete()
+            } catch (e: Exception) {
+                android.util.Log.e("RecipeViewModel", "Report failed", e)
             }
         }
     }
