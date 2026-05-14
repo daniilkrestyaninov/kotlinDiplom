@@ -309,7 +309,7 @@ fun RecipePostCard(
 
             if (!comments.isNullOrEmpty()) {
                 HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp), color = Color(0xFFF0F0F0))
-                CommentPreview(comment = comments!!.first())
+                CommentPreview(comment = comments!!.first(), navController = navController)
             }
         }
     }
@@ -348,11 +348,15 @@ fun StatItem(
 }
 
 @Composable
-fun CommentPreview(comment: Comment) {
+fun CommentPreview(comment: Comment, navController: NavController? = null) {
     Column {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().then(
+                if (navController != null && comment.author?.id != null) {
+                    Modifier.clickable { navController.navigate("user_detail/${comment.author.id}") }
+                } else Modifier
+            )
         ) {
             AsyncImage(
                 model = normalizeImageUrl(comment.author?.avatarUrl) ?: R.drawable.ic_avatar,

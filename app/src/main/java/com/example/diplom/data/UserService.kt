@@ -46,6 +46,9 @@ interface UserService {
     
     @GET("users/{id}")
     suspend fun getUserProfile(@Path("id") id: String): UserProfile
+    
+    @GET("users/search")
+    suspend fun searchUsers(@Query("q") query: String): List<User>
 
     // Subscriptions
     @POST("users/{id}/follow")

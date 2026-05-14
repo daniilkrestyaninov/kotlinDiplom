@@ -15,7 +15,7 @@ import com.example.diplom.UmamiMainScreen
 import com.example.diplom.UmamiTopBar
 import com.example.diplom.UmamiBottomNavigation
 import com.example.diplom.AddRecipeFab
-import com.example.diplom.UmamiSearchScreen
+import com.example.diplom.SearchScreen
 import com.example.diplom.UmamiProfileScreen
 import com.example.diplom.UmamiRecipeDetailScreen
 import com.example.diplom.UmamiChatScreen
@@ -138,7 +138,7 @@ fun UmamiApp(tokenManager: TokenManager) {
                 UmamiMainScreen(navController = navController, currentUserId = currentUserId)
             }
             composable(Routes.SEARCH) {
-                UmamiSearchScreen(navController = navController, currentUserId = currentUserId)
+                SearchScreen(navController = navController, currentUserId = currentUserId)
             }
             composable(Routes.FAVORITES) {
                 if (!isLoggedIn) {
