@@ -112,23 +112,32 @@ fun NotificationScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         items(notifications, key = { it.id }) { notification ->
+                            val isNotificationAdmin = notification.actor?.role?.lowercase() == "admin" || notification.actor?.role?.lowercase() == "moderator"
                             NotificationItem(
                                 notification = notification,
                                 onClick = {
                                     viewModel.markAsRead(notification.id)
-                                    when (notification.type) {
-                                        NotificationType.FOLLOW -> {
-                                        if (notification.actorId != 0) {
-                                            navController.navigate("user_detail/${notification.actorId}")
+                                    if (!isNotificationAdmin) {
+                                        when (notification.type) {
+                                            NotificationType.FOLLOW -> {
+                                                if (notification.actorId != 0) {
+                                                    navController.navigate("user_detail/${notification.actorId}")
+                                                }
+                                            }
+                                            NotificationType.LIKE, NotificationType.COMMENT, NotificationType.REPLY, NotificationType.NEW_POST -> {
+                                                notification.recipeId?.let {
+                                                    navController.navigate("recipe_detail/$it")
+                                                }
+                                            }
+                                            NotificationType.SYSTEM -> { /* System notifications may not have a target */ }
+                                            else -> {}
                                         }
-                                        }
-                                        NotificationType.LIKE, NotificationType.COMMENT, NotificationType.REPLY, NotificationType.NEW_POST -> {
+                                    } else {
+                                        if (notification.type in listOf(NotificationType.LIKE, NotificationType.COMMENT, NotificationType.REPLY, NotificationType.NEW_POST)) {
                                             notification.recipeId?.let {
                                                 navController.navigate("recipe_detail/$it")
                                             }
                                         }
-                                        NotificationType.SYSTEM -> { /* System notifications may not have a target */ }
-                                        else -> {}
                                     }
                                 }
                             )
@@ -184,6 +193,8 @@ fun NotificationItem(
     onClick: () -> Unit
 ) {
     val bgColor = if (notification.isRead) Color.White else Color(0xFFFFF0F0)
+    val isAdmin = notification.actor?.role?.lowercase() == "admin" || notification.actor?.role?.lowercase() == "moderator"
+    val roleLabel = if (notification.actor?.role?.lowercase() == "admin") "Администратор" else "Модератор"
 
     Card(
         modifier = Modifier
@@ -199,14 +210,31 @@ fun NotificationItem(
         ) {
             // Actor Avatar with Badge Icon
             Box {
-                AsyncImage(
-                    model = notification.actor?.avatarUrl?.let { normalizeImageUrl(it) } ?: R.drawable.ic_avatar,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape),
-                    contentScale = ContentScale.Crop
-                )
+                if (isAdmin) {
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFFFEAEA)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.Shield,
+                            contentDescription = null,
+                            tint = Color(0xFFFF6B6B),
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                } else {
+                    AsyncImage(
+                        model = notification.actor?.avatarUrl?.let { normalizeImageUrl(it) } ?: R.drawable.ic_avatar,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                }
 
                 val icon = when (notification.type) {
                     NotificationType.LIKE -> Icons.Default.Favorite
@@ -256,7 +284,7 @@ fun NotificationItem(
                     else -> ""
                 }
 
-                val finalActorName = if (notification.type == NotificationType.SYSTEM) "Umami" else actorName
+                val finalActorName = if (isAdmin) roleLabel else if (notification.type == NotificationType.SYSTEM) "Umami" else actorName
 
                 Text(
                     text = if (notification.type == NotificationType.SYSTEM) message else "$finalActorName $message",

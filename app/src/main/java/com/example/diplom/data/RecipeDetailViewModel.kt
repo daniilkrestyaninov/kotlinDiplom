@@ -221,11 +221,13 @@ class RecipeDetailViewModel : ViewModel() {
     fun markAsCooked(recipeId: String) {
         viewModelScope.launch {
             try {
-                recipeService.markCooked(recipeId)
+                val response = recipeService.markCooked(recipeId)
                 val currentState = _state.value
                 if (currentState is RecipeDetailState.Success) {
+                    val currentCount = currentState.recipe.cookedCount ?: 0
                     val updatedRecipe = currentState.recipe.copy(
-                        cookedCount = (currentState.recipe.cookedCount ?: 0) + 1
+                        isCooked = response.cooked,
+                        cookedCount = if (response.cooked) currentCount + 1 else (currentCount - 1).coerceAtLeast(0)
                     )
                     _state.value = currentState.copy(recipe = updatedRecipe)
                 }

@@ -39,6 +39,7 @@ import com.example.diplom.ui.navigation.Routes
 fun UmamiMainScreen(navController: NavController, currentUserId: String? = null, isBlocked: Boolean = false, viewModel: RecipeViewModel = viewModel()) {
     val state by viewModel.state
     val context = androidx.compose.ui.platform.LocalContext.current
+    var showFullMenuBottomSheet by remember { mutableStateOf(false) }
     
     LaunchedEffect(currentUserId) {
         viewModel.currentUserId = currentUserId
@@ -83,7 +84,8 @@ fun UmamiMainScreen(navController: NavController, currentUserId: String? = null,
             item {
                 MenuOfTheWeekSection(
                     items = viewModel.menuOfTheWeek.value,
-                    onRecipeClick = { id -> navController.navigate("recipe_detail/$id") }
+                    onRecipeClick = { id -> navController.navigate("recipe_detail/$id") },
+                    onShowAllClick = { showFullMenuBottomSheet = true }
                 )
             }
             
@@ -173,6 +175,100 @@ fun UmamiMainScreen(navController: NavController, currentUserId: String? = null,
                                 colors = ButtonDefaults.buttonColors(containerColor = UmamiOrange)
                             ) {
                                 Text("Попробовать снова", fontFamily = InterFontFamily)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showFullMenuBottomSheet) {
+        val daysOfWeekFull = listOf("Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье")
+        ModalBottomSheet(
+            onDismissRequest = { showFullMenuBottomSheet = false },
+            containerColor = Color.White,
+            dragHandle = { BottomSheetDefaults.DragHandle() }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 24.dp)
+            ) {
+                Text(
+                    text = "Меню на неделю",
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 22.sp,
+                    fontFamily = InterFontFamily,
+                    color = Color.Black,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+                )
+                
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    for (dayIndex in 1..7) {
+                        val dayItems = viewModel.menuOfTheWeek.value.filter { it.day_of_week == dayIndex }
+                        if (dayItems.isNotEmpty()) {
+                            item {
+                                Text(
+                                    text = daysOfWeekFull[dayIndex - 1],
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp,
+                                    fontFamily = InterFontFamily,
+                                    color = UmamiOrange,
+                                    modifier = Modifier.padding(vertical = 4.dp)
+                                )
+                            }
+                            items(dayItems) { item ->
+                                item.Recipe?.let { recipe ->
+                                    Card(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { 
+                                                navController.navigate("recipe_detail/${recipe.id}")
+                                                showFullMenuBottomSheet = false
+                                            },
+                                        shape = RoundedCornerShape(12.dp),
+                                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9))
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(8.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            AsyncImage(
+                                                model = normalizeImageUrl(recipe.imageUrl),
+                                                contentDescription = null,
+                                                modifier = Modifier
+                                                    .size(50.dp)
+                                                    .clip(RoundedCornerShape(8.dp)),
+                                                contentScale = ContentScale.Crop
+                                            )
+                                            Spacer(modifier = Modifier.width(12.dp))
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    text = recipe.title ?: "Без названия",
+                                                    fontFamily = InterFontFamily,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 14.sp
+                                                )
+                                                recipe.description?.let {
+                                                    Text(
+                                                        text = it,
+                                                        fontFamily = InterFontFamily,
+                                                        color = Color.Gray,
+                                                        fontSize = 11.sp,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -600,7 +696,11 @@ fun AddRecipeFab(onClick: () -> Unit = {}) {
 
 
 @Composable
-fun MenuOfTheWeekSection(items: List<MenuOfTheWeekItem>, onRecipeClick: (Long) -> Unit) {
+fun MenuOfTheWeekSection(
+    items: List<MenuOfTheWeekItem>, 
+    onRecipeClick: (Long) -> Unit,
+    onShowAllClick: () -> Unit
+) {
     if (items.isEmpty()) return
     
     val calendar = java.util.Calendar.getInstance()
@@ -619,14 +719,27 @@ fun MenuOfTheWeekSection(items: List<MenuOfTheWeekItem>, onRecipeClick: (Long) -
     if (todayRecipes.isEmpty()) return
 
     Column(modifier = Modifier.padding(vertical = 12.dp)) {
-        Text(
-            "Меню дня",
-            color = Color.Black,
-            fontWeight = FontWeight.ExtraBold,
-            fontSize = 20.sp,
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
-            fontFamily = InterFontFamily
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "Меню дня",
+                color = Color.Black,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 20.sp,
+                fontFamily = InterFontFamily
+            )
+            Text(
+                "Показать всё",
+                color = UmamiOrange,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                fontFamily = InterFontFamily,
+                modifier = Modifier.clickable { onShowAllClick() }
+            )
+        }
         LazyRow(
             contentPadding = PaddingValues(horizontal = 20.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp)

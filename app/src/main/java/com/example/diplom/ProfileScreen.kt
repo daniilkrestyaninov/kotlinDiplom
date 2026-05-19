@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -132,200 +133,324 @@ fun UmamiProfileScreen(
             .background(UmamiCream),
         contentPadding = PaddingValues(16.dp)
     ) {
-        // Profile header card
+        // Premium Profile Card
         item {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
-                shadowElevation = 1.dp,
-                color = Color.White
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+                shape = RoundedCornerShape(32.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
-                Column {
-                    Row(
+                Column(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    // 1. Cover Banner (Sunset Gradient)
+                    Box(
                         modifier = Modifier
-                            .clickable {
-                                if (!isLoggedIn) onLoginClick()
-                                else if (user != null) navController.navigate("user_detail/${user.id}")
-                            }
-                            .padding(20.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            .fillMaxWidth()
+                            .height(115.dp)
+                            .background(
+                                androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                    colors = listOf(UmamiOrange, Color(0xFFFF9E80))
+                                )
+                            )
                     ) {
-                        // Avatar with upload capability
-                        Box(
-                            modifier = Modifier
-                                .size(60.dp)
-                                .clip(CircleShape)
-                                .background(UmamiOrange.copy(alpha = 0.1f))
-                                .then(
-                                    if (isLoggedIn) Modifier.clickable { avatarLauncher.launch("image/*") }
-                                    else Modifier
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            val avatarToShow = currentAvatarUrl ?: user?.avatarUrl
-                            if (avatarToShow != null) {
-                                AsyncImage(
-                                    model = normalizeImageUrl(avatarToShow),
-                                    contentDescription = null,
-                                    modifier = Modifier.fillMaxSize().clip(CircleShape),
-                                    contentScale = ContentScale.Crop
-                                )
-                            } else {
-                                Icon(
-                                    Icons.Default.Person,
-                                    contentDescription = null,
-                                    tint = UmamiOrange,
-                                    modifier = Modifier.size(32.dp)
-                                )
-                            }
-                            // Camera overlay
-                            if (isLoggedIn) {
+                        // Quick Action Buttons (Edit Profile & Logout) in the top-right corner of the banner
+                        if (isLoggedIn && user != null) {
+                            Row(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(top = 16.dp, end = 20.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                // Edit Profile Box Button
                                 Box(
                                     modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(Color.Black.copy(alpha = 0.2f), CircleShape),
+                                        .size(38.dp)
+                                        .background(Color.White.copy(alpha = 0.25f), CircleShape)
+                                        .clickable { showEditDialog = true },
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
-                                        Icons.Default.CameraAlt,
-                                        contentDescription = "Загрузить фото",
-                                        tint = Color.White.copy(alpha = 0.8f),
-                                        modifier = Modifier.size(20.dp)
+                                        imageVector = Icons.Default.Edit,
+                                        contentDescription = "Редактировать",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp)
                                     )
                                 }
-                            }
-                        }
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                user?.name ?: user?.username ?: "Личный профиль",
-                                fontWeight = FontWeight.Bold,
-                                color = UmamiOrange,
-                                fontSize = 22.sp,
-                                fontFamily = InterFontFamily
-                            )
-                            if (isLoggedIn && user != null) {
-                                Text(
-                                    "@${user.username}",
-                                    color = Color.Gray,
-                                    fontSize = 13.sp,
-                                    fontFamily = InterFontFamily
-                                )
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                                    Text("${profileData?.stats?.recipesCount ?: 0} рецептов", fontSize = 12.sp, color = Color.Gray, fontFamily = InterFontFamily)
-                                    Text(
-                                        "${profileData?.stats?.followersCount ?: 0} подп.",
-                                        fontSize = 12.sp,
-                                        color = Color.Gray,
-                                        fontFamily = InterFontFamily,
-                                        modifier = Modifier.clickable {
-                                            showFollowers = true
-                                            scope.launch {
-                                                try { followers = userService.getFollowers(user.id) } catch (_: Exception) {}
-                                            }
-                                        }
-                                    )
-                                    Text(
-                                        "${profileData?.stats?.followingCount ?: 0} подп-к",
-                                        fontSize = 12.sp,
-                                        color = Color.Gray,
-                                        fontFamily = InterFontFamily,
-                                        modifier = Modifier.clickable {
-                                            showFollowing = true
-                                            scope.launch {
-                                                try { following = userService.getFollowing(user.id) } catch (_: Exception) {}
-                                            }
-                                        }
-                                    )
-                                }
-                            } else {
-                                Text(
-                                    "Войдите, чтобы сохранять рецепты",
-                                    color = Color.Gray,
-                                    fontSize = 12.sp,
-                                    fontFamily = InterFontFamily
-                                )
-                            }
-                        }
-                        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Color.Gray)
-                    }
-
-                    // Blocked notification
-                    if (isLoggedIn && user?.isBlocked == true) {
-                        Surface(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
-                            color = Color(0xFFFFEBEE),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Block, contentDescription = null, tint = Color.Red, modifier = Modifier.size(20.dp))
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Ваш аккаунт заблокирован", color = Color.Red, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                }
-                                Text(
-                                    "Взаимодействие с контентом ограничено. Вы можете оспорить блокировку.",
-                                    fontSize = 12.sp,
-                                    color = Color.DarkGray,
-                                    modifier = Modifier.padding(top = 4.dp)
-                                )
-                                TextButton(
-                                    onClick = { showAppealDialog = true },
-                                    modifier = Modifier.align(Alignment.End)
+                                // Logout Box Button
+                                Box(
+                                    modifier = Modifier
+                                        .size(38.dp)
+                                        .background(Color.White.copy(alpha = 0.25f), CircleShape)
+                                        .clickable { showLogoutDialog = true },
+                                    contentAlignment = Alignment.Center
                                 ) {
-                                    Text("Оспорить", color = Color.Red, fontWeight = FontWeight.Bold)
+                                    Icon(
+                                        imageVector = Icons.Default.Logout,
+                                        contentDescription = "Выйти",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp)
+                                    )
                                 }
                             }
                         }
                     }
 
-                    // Bio display
-                    if (isLoggedIn && !profileData?.bio.isNullOrBlank()) {
+                    // 2. Overlapping Circular Avatar
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.CenterHorizontally)
+                            .offset(y = (-45).dp) // Half overlap
+                            .size(96.dp)
+                            .border(4.dp, Color.White, CircleShape)
+                            .clip(CircleShape)
+                            .background(Color.White)
+                            .then(
+                                if (isLoggedIn) Modifier.clickable { avatarLauncher.launch("image/*") }
+                                else Modifier
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val avatarToShow = currentAvatarUrl ?: user?.avatarUrl
+                        if (avatarToShow != null) {
+                            AsyncImage(
+                                model = normalizeImageUrl(avatarToShow),
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Icon(
+                                Icons.Default.Person,
+                                contentDescription = null,
+                                tint = UmamiOrange,
+                                modifier = Modifier.size(48.dp)
+                            )
+                        }
+                        // Camera upload overlay
+                        if (isLoggedIn) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.Black.copy(alpha = 0.2f), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.CameraAlt,
+                                    contentDescription = "Изменить фото",
+                                    tint = Color.White.copy(alpha = 0.85f),
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    // 3. User Info (Name & Username)
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .offset(y = (-30).dp)
+                            .padding(horizontal = 24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        // Display Name
                         Text(
-                            profileData!!.bio!!,
-                            modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 16.dp),
-                            color = Color.DarkGray,
-                            fontSize = 13.sp,
+                            text = user?.name ?: user?.username ?: "Личный профиль",
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.Black,
+                            fontSize = 24.sp,
                             fontFamily = InterFontFamily
                         )
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-        }
+                        
+                        // @username
+                        if (isLoggedIn && user != null) {
+                            Text(
+                                text = "@${user.username}",
+                                color = Color.Gray,
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 14.sp,
+                                fontFamily = InterFontFamily
+                            )
+                        } else {
+                            Text(
+                                text = "Войдите в аккаунт, чтобы сохранять и делиться рецептами",
+                                color = Color.Gray,
+                                fontSize = 13.sp,
+                                fontFamily = InterFontFamily,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                        }
 
-        // Action buttons (edit profile, logout) - only for logged in users
-        if (isLoggedIn && user != null) {
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = { showEditDialog = true },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = UmamiOrange),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, UmamiOrange)
-                    ) {
-                        Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Редактировать", fontFamily = InterFontFamily, fontSize = 13.sp)
-                    }
-                    OutlinedButton(
-                        onClick = { showLogoutDialog = true },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.Red.copy(alpha = 0.5f))
-                    ) {
-                        Icon(Icons.Default.Logout, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Выйти", fontFamily = InterFontFamily, fontSize = 13.sp)
+                        // Blocked notification inside the card if user is blocked
+                        if (isLoggedIn && user?.isBlocked == true) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                color = Color(0xFFFFEBEE),
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.Block, contentDescription = null, tint = Color.Red, modifier = Modifier.size(20.dp))
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Ваш аккаунт заблокирован", color = Color.Red, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                    }
+                                    Text(
+                                        "Взаимодействие с контентом ограничено. Вы можете оспорить блокировку.",
+                                        fontSize = 12.sp,
+                                        color = Color.DarkGray,
+                                        modifier = Modifier.padding(top = 4.dp)
+                                    )
+                                    TextButton(
+                                        onClick = { showAppealDialog = true },
+                                        modifier = Modifier.align(Alignment.End)
+                                    ) {
+                                        Text("Оспорить", color = Color.Red, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        // 4. Premium Stat Columns (Recipes, Followers, Following)
+                        if (isLoggedIn && user != null) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(Color(0xFFF9F9F9), RoundedCornerShape(20.dp))
+                                    .padding(vertical = 12.dp),
+                                horizontalArrangement = Arrangement.SpaceEvenly,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Stat item: Recipes
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier.clickable {
+                                        navController.navigate("user_detail/${user.id}")
+                                    }
+                                ) {
+                                    Text(
+                                        text = "${profileData?.stats?.recipesCount ?: 0}",
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 18.sp,
+                                        color = UmamiOrange,
+                                        fontFamily = InterFontFamily
+                                    )
+                                    Text(
+                                        text = "Рецепты",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp,
+                                        color = Color.Gray,
+                                        fontFamily = InterFontFamily
+                                    )
+                                }
+                                
+                                // Vertical divider
+                                Box(modifier = Modifier.width(1.dp).height(24.dp).background(Color(0xFFE5E5E5)))
+
+                                // Stat item: Following (подп.)
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier.clickable {
+                                        showFollowers = true
+                                        scope.launch {
+                                            try { followers = userService.getFollowers(user.id) } catch (_: Exception) {}
+                                        }
+                                    }
+                                ) {
+                                    Text(
+                                        text = "${profileData?.stats?.followersCount ?: 0}",
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 18.sp,
+                                        color = UmamiOrange,
+                                        fontFamily = InterFontFamily
+                                    )
+                                    Text(
+                                        text = "Подписки",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp,
+                                        color = Color.Gray,
+                                        fontFamily = InterFontFamily
+                                    )
+                                }
+
+                                // Vertical divider
+                                Box(modifier = Modifier.width(1.dp).height(24.dp).background(Color(0xFFE5E5E5)))
+
+                                // Stat item: Followers (подп-к)
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier.clickable {
+                                        showFollowing = true
+                                        scope.launch {
+                                            try { following = userService.getFollowing(user.id) } catch (_: Exception) {}
+                                        }
+                                    }
+                                ) {
+                                    Text(
+                                        text = "${profileData?.stats?.followingCount ?: 0}",
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 18.sp,
+                                        color = UmamiOrange,
+                                        fontFamily = InterFontFamily
+                                    )
+                                    Text(
+                                        text = "Подписчики",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp,
+                                        color = Color.Gray,
+                                        fontFamily = InterFontFamily
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(20.dp))
+                        }
+
+                        // 5. Bio Container with Quote style
+                        val bioText = if (isLoggedIn && !profileData?.bio.isNullOrBlank()) {
+                            profileData!!.bio!!
+                        } else if (isLoggedIn) {
+                            "Ты не ты когда ты... голоден! 🍫"
+                        } else {
+                            "Войдите, чтобы делиться рецептами и подписываться на авторов! 🍕"
+                        }
+
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = Color(0xFFFFF8F6),
+                            shape = RoundedCornerShape(18.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, UmamiOrange.copy(alpha = 0.15f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Favorite,
+                                    contentDescription = null,
+                                    tint = UmamiOrange.copy(alpha = 0.5f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = bioText,
+                                    color = Color.DarkGray,
+                                    fontSize = 14.sp,
+                                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                                    fontFamily = InterFontFamily,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
                     }
                 }
-                Spacer(modifier = Modifier.height(16.dp))
             }
         }
 
@@ -347,6 +472,11 @@ fun UmamiProfileScreen(
 
                     ProfileMenuItem("Избранное", Icons.Default.Bookmark) {
                         if (!isLoggedIn) onLoginClick() else navController.navigate(Routes.FAVORITES)
+                    }
+                    HorizontalDivider(color = Color(0xFFF5F5F5), modifier = Modifier.padding(horizontal = 20.dp))
+
+                    ProfileMenuItem("Планы питания", Icons.Default.CalendarMonth) {
+                        if (!isLoggedIn) onLoginClick() else navController.navigate(Routes.DIET_PLANS)
                     }
                     HorizontalDivider(color = Color(0xFFF5F5F5), modifier = Modifier.padding(horizontal = 20.dp))
 

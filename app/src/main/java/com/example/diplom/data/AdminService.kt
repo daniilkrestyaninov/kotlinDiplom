@@ -36,12 +36,17 @@ data class UserBrief(
     val avatar_url: String?
 )
 
+data class AddMenuRequest(
+    @SerializedName("day_of_week") val dayOfWeek: Int,
+    @SerializedName("recipe_id") val recipeId: Long
+)
+
 interface AdminService {
     @GET("admin/menu-of-week")
     suspend fun getMenuOfTheWeek(): List<MenuOfTheWeekItem>
 
     @POST("admin/menu-of-week")
-    suspend fun addToMenu(@Body body: Map<String, Any>)
+    suspend fun addToMenu(@Body body: AddMenuRequest): MenuOfTheWeekItem
 
     @DELETE("admin/menu-of-week/{id}")
     suspend fun removeFromMenu(@Path("id") id: Long)

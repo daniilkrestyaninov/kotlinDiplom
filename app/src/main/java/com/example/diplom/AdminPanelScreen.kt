@@ -94,7 +94,12 @@ fun AdminPanelScreen(navController: NavController, viewModel: AdminViewModel = v
                         modifier = Modifier.weight(1f),
                         onClick = { navController.navigate("admin_metadata") }
                     )
-                    Spacer(modifier = Modifier.weight(1f))
+                    AdminMenuCard(
+                        title = "Меню недели",
+                        icon = Icons.Default.RestaurantMenu,
+                        modifier = Modifier.weight(1f),
+                        onClick = { navController.navigate("admin_menu") }
+                    )
                 }
             }
 

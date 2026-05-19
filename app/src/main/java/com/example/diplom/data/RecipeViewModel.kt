@@ -65,7 +65,7 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
                 _kitchens.value = try { service.getKitchens() } catch (_: Exception) { emptyList() }
                 _cookingTypes.value = try { service.getCookingTypes() } catch (_: Exception) { emptyList() }
                 _celebrations.value = try { service.getCelebrations() } catch (_: Exception) { emptyList() }
-                _menuOfTheWeek.value = try { ApiClient.adminService.getMenuOfTheWeek() } catch (_: Exception) { emptyList() }
+                _menuOfTheWeek.value = try { service.getMenuOfTheWeek() } catch (_: Exception) { emptyList() }
                 
                 // Сначала пробуем загрузить кэш
                 val cached = dao.getCachedFeed().first()

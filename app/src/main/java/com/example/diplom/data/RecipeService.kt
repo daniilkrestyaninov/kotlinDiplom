@@ -22,6 +22,9 @@ interface RecipeService {
         @Query("limit") limit: Int = 20
     ): List<Recipe>
 
+    @GET("recipes/menu-of-week")
+    suspend fun getMenuOfTheWeek(): List<MenuOfTheWeekItem>
+
     @GET("recipes/{id}")
     suspend fun getRecipeById(@Path("id") id: String): Recipe
 
@@ -53,7 +56,7 @@ interface RecipeService {
     suspend fun updatePersonalNote(@Path("id") id: String, @Body body: Map<String, String>)
 
     @POST("recipes/{id}/cooked")
-    suspend fun markCooked(@Path("id") id: String)
+    suspend fun markCooked(@Path("id") id: String): CookedResponse
 
     @POST("recipes/{id}/favorite")
     suspend fun addToFavorite(@Path("id") id: String)
@@ -83,3 +86,8 @@ interface RecipeService {
         @Part("folder") folder: RequestBody
     ): UploadResponse
 }
+
+data class CookedResponse(
+    val cooked: Boolean,
+    val message: String
+)

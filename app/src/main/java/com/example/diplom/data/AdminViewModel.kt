@@ -513,4 +513,75 @@ class AdminViewModel(private val service: AdminService = ApiClient.adminService)
             }
         }
     }
+
+    // --- Weekly Menu Management ---
+    private val _menuOfWeek = MutableStateFlow<AdminState<List<MenuOfTheWeekItem>>>(AdminState.Idle)
+    val menuOfWeek = _menuOfWeek.asStateFlow()
+
+    private val _recipes = MutableStateFlow<List<Recipe>>(emptyList())
+    val recipes = _recipes.asStateFlow()
+
+    fun loadMenuOfWeek() {
+        viewModelScope.launch {
+            _menuOfWeek.value = AdminState.Loading
+            try {
+                _menuOfWeek.value = AdminState.Success(service.getMenuOfTheWeek())
+            } catch (e: Exception) {
+                _menuOfWeek.value = AdminState.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+
+    fun addToMenuOfWeek(dayOfWeek: Int, recipeId: Long, onComplete: (Boolean, String?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                service.addToMenu(AddMenuRequest(dayOfWeek, recipeId))
+                loadMenuOfWeek()
+                onComplete(true, null)
+            } catch (e: retrofit2.HttpException) {
+                val errorBody = e.response()?.errorBody()?.string()
+                val message = try {
+                    org.json.JSONObject(errorBody ?: "{}").getString("message")
+                } catch (_: Exception) {
+                    "Ошибка сервера: ${e.code()}"
+                }
+                android.util.Log.e("AdminVM", "Http error adding to menu: $message", e)
+                onComplete(false, message)
+            } catch (e: Exception) {
+                android.util.Log.e("AdminVM", "Failed to add to menu", e)
+                onComplete(false, e.localizedMessage ?: "Неизвестная ошибка сети")
+            }
+        }
+    }
+
+    fun removeFromMenuOfWeek(id: Long, onComplete: (Boolean, String?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                service.removeFromMenu(id)
+                loadMenuOfWeek()
+                onComplete(true, null)
+            } catch (e: retrofit2.HttpException) {
+                val errorBody = e.response()?.errorBody()?.string()
+                val message = try {
+                    org.json.JSONObject(errorBody ?: "{}").getString("message")
+                } catch (_: Exception) {
+                    "Ошибка сервера: ${e.code()}"
+                }
+                onComplete(false, message)
+            } catch (e: Exception) {
+                android.util.Log.e("AdminVM", "Failed to remove from menu", e)
+                onComplete(false, e.localizedMessage ?: "Неизвестная ошибка сети")
+            }
+        }
+    }
+
+    fun searchRecipes(query: String) {
+        viewModelScope.launch {
+            try {
+                _recipes.value = ApiClient.recipeService.getRecipes(search = query.takeIf { it.isNotBlank() })
+            } catch (e: Exception) {
+                android.util.Log.e("AdminVM", "Failed to search recipes", e)
+            }
+        }
+    }
 }

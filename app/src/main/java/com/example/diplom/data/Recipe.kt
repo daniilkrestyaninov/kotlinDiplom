@@ -33,6 +33,7 @@ data class Recipe(
     @SerializedName("views_count") var viewsCount: Int? = null,
     var rating: Double? = null,
     @SerializedName("is_liked") var isLiked: Boolean? = null,
+    @SerializedName("is_cooked") var isCooked: Boolean? = null,
     var isFavorited: Boolean? = null,
     @SerializedName("cooked_count") var cookedCount: Int? = null,
     @SerializedName("personal_note") var personalNote: String? = null,

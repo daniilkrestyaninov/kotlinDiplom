@@ -369,22 +369,31 @@ fun UmamiRecipeDetailScreen(
 
                         if (currentUserId != null) {
                             Spacer(modifier = Modifier.height(16.dp))
+                            val isCooked = recipe.isCooked == true
                             Button(
                                 onClick = { 
                                     if (isBlocked) {
                                         Toast.makeText(context, "Действие недоступно: аккаунт заблокирован", Toast.LENGTH_SHORT).show()
                                     } else {
                                         viewModel.markAsCooked(recipeId)
-                                        Toast.makeText(context, "Отмечено как приготовленное!", Toast.LENGTH_SHORT).show()
+                                        val toastMsg = if (isCooked) "Удалено из приготовленных" else "Отмечено как приготовленное!"
+                                        Toast.makeText(context, toastMsg, Toast.LENGTH_SHORT).show()
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth(),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (isCooked) Color(0xFF4CAF50) else Color(0xFFE8F5E9),
+                                    contentColor = if (isCooked) Color.White else Color(0xFF2E7D32)
+                                ),
                                 shape = RoundedCornerShape(16.dp)
                             ) {
-                                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color.White)
+                                Icon(
+                                    Icons.Default.CheckCircle, 
+                                    contentDescription = null, 
+                                    tint = if (isCooked) Color.White else Color(0xFF2E7D32)
+                                )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Приготовлено (${recipe.cookedCount ?: 0})", fontWeight = FontWeight.Bold, fontFamily = InterFontFamily)
+                                Text("Приготовлено", fontWeight = FontWeight.Bold, fontFamily = InterFontFamily)
                             }
                         }
 
@@ -735,7 +744,7 @@ fun NutritionRow(label: String, value: String) {
 }
 @Composable
 fun PersonalNoteSection(initialNote: String, onSave: (String) -> Unit) {
-    var note by remember { mutableStateOf(initialNote) }
+    var note by remember(initialNote) { mutableStateOf(initialNote) }
     var isEditing by remember { mutableStateOf(false) }
 
     Surface(

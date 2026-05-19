@@ -69,4 +69,5 @@ object ApiClient {
     val reportService: ReportService by lazy { retrofit.create(ReportService::class.java) }
     val notificationService: NotificationService by lazy { retrofit.create(NotificationService::class.java) }
     val adminService: AdminService by lazy { retrofit.create(AdminService::class.java) }
+    val dietService: DietService by lazy { retrofit.create(DietService::class.java) }
 }
