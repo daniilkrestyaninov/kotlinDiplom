@@ -78,4 +78,7 @@ interface UserService {
 
     @POST("users/verify-request")
     suspend fun requestVerification(@Body body: Map<String, String>)
+
+    @POST("users/me/appeal")
+    suspend fun createAppeal(@Body body: Map<String, String>): Map<String, Any>
 }

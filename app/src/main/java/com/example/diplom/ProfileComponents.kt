@@ -86,6 +86,7 @@ fun RecipePostCard(
     navController: NavController,
     currentUserId: String? = null,
     isFavorited: Boolean = false,
+    isBlocked: Boolean = false,
     onLikeClick: () -> Unit = {},
     onCommentClick: () -> Unit = {},
     onFollowClick: () -> Unit = {},
@@ -125,7 +126,12 @@ fun RecipePostCard(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .weight(1f)
-                        .clickable { recipe.User?.id?.let { navController.navigate("user_detail/$it") } }
+                        .clickable { 
+                            val uid = recipe.User?.id
+                            if (!uid.isNullOrBlank()) {
+                                navController.navigate("user_detail/$uid")
+                            }
+                        }
                 ) {
                     AsyncImage(
                         model = normalizeImageUrl(recipe.User?.avatarUrl) ?: R.drawable.ic_avatar,
@@ -225,7 +231,13 @@ fun RecipePostCard(
                         .align(Alignment.TopEnd)
                         .size(36.dp)
                 ) {
-                    IconButton(onClick = { onFavoriteClick() }) {
+                    IconButton(onClick = { 
+                        if (isBlocked) {
+                            android.widget.Toast.makeText(context, "Действие недоступно: аккаунт заблокирован", android.widget.Toast.LENGTH_SHORT).show()
+                        } else {
+                            onFavoriteClick() 
+                        }
+                    }) {
                         Icon(
                             if (isFavorited) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
                             contentDescription = "Save",
@@ -274,7 +286,13 @@ fun RecipePostCard(
 
             // Stats
             Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { onLikeClick() }) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { 
+                    if (isBlocked) {
+                        android.widget.Toast.makeText(context, "Действие недоступно: аккаунт заблокирован", android.widget.Toast.LENGTH_SHORT).show()
+                    } else {
+                        onLikeClick() 
+                    }
+                }) {
                     val currentLikes = recipe.likesCount ?: recipe.likes?.size ?: 0
                     val currentIsLiked = recipe.isLiked == true
 

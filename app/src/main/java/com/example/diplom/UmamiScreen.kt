@@ -36,7 +36,7 @@ import com.example.diplom.ui.navigation.Routes
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UmamiMainScreen(navController: NavController, currentUserId: String? = null, viewModel: RecipeViewModel = viewModel()) {
+fun UmamiMainScreen(navController: NavController, currentUserId: String? = null, isBlocked: Boolean = false, viewModel: RecipeViewModel = viewModel()) {
     val state by viewModel.state
     val context = androidx.compose.ui.platform.LocalContext.current
     
@@ -101,7 +101,8 @@ fun UmamiMainScreen(navController: NavController, currentUserId: String? = null,
                     }
                 }
                 is RecipeState.Success -> {
-                    items(recipeState.recipes, key = { it.id }) { recipe ->
+                    val activeRecipes = recipeState.recipes.filter { it.User?.isBlocked != true }
+                    items(activeRecipes, key = { it.id }) { recipe ->
                         val isLiked = recipe.isLiked ?: recipe.likes?.any { it.userId == currentUserId } ?: false
                         val likesCount = recipe.likesCount ?: recipe.likes?.size ?: 0
                         val isFavorited = recipe.isFavorited ?: false
@@ -111,9 +112,22 @@ fun UmamiMainScreen(navController: NavController, currentUserId: String? = null,
                             navController = navController,
                             currentUserId = currentUserId,
                             isFavorited = isFavorited,
-                            onLikeClick = { viewModel.toggleLike(recipe.id.toString(), isLiked, currentUserId) },
+                            isBlocked = isBlocked,
+                            onLikeClick = {
+                                if (isBlocked) {
+                                    android.widget.Toast.makeText(context, "Действие недоступно: аккаунт заблокирован", android.widget.Toast.LENGTH_SHORT).show()
+                                } else {
+                                    viewModel.toggleLike(recipe.id.toString(), isLiked, currentUserId)
+                                }
+                            },
                             onCommentClick = { navController.navigate("recipe_detail/${recipe.id}?tab=comments") },
-                            onFollowClick = { viewModel.toggleFollow(recipe.User!!.id.toString()) },
+                            onFollowClick = { 
+                                if (isBlocked) {
+                                    android.widget.Toast.makeText(context, "Действие недоступно: аккаунт заблокирован", android.widget.Toast.LENGTH_SHORT).show()
+                                } else {
+                                    viewModel.toggleFollow(recipe.User!!.id.toString())
+                                }
+                            },
                             onFavoriteClick = {
                                 if (currentUserId.isNullOrBlank()) {
                                     android.widget.Toast.makeText(context, "Нужно войти в аккаунт", android.widget.Toast.LENGTH_SHORT).show()

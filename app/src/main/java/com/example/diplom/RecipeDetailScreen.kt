@@ -32,6 +32,7 @@ fun UmamiRecipeDetailScreen(
     recipeId: String,
     initialTab: String = "",
     currentUserId: String? = null,
+    isBlocked: Boolean = false,
     viewModel: RecipeDetailViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -68,6 +69,8 @@ fun UmamiRecipeDetailScreen(
                     IconButton(onClick = {
                         if (currentUserId.isNullOrBlank()) {
                             Toast.makeText(context, "Нужно войти в аккаунт", Toast.LENGTH_SHORT).show()
+                        } else if (isBlocked) {
+                            Toast.makeText(context, "Действие недоступно: аккаунт заблокирован", Toast.LENGTH_SHORT).show()
                         } else {
                             viewModel.toggleFavorite(recipeId, isFavorited)
                             val msg = if (isFavorited) "Удалено из избранного" else "Добавлено в избранное"
@@ -132,6 +135,8 @@ fun UmamiRecipeDetailScreen(
                     IconButton(onClick = {
                         if (currentUserId.isNullOrBlank()) {
                             Toast.makeText(context, "Нужно войти в аккаунт", Toast.LENGTH_SHORT).show()
+                        } else if (isBlocked) {
+                            Toast.makeText(context, "Действие недоступно: аккаунт заблокирован", Toast.LENGTH_SHORT).show()
                         } else {
                             viewModel.toggleLike(recipeId, isLiked, currentUserId)
                             val msg = if (isLiked) "Лайк убран" else "Лайк поставлен"
@@ -285,7 +290,12 @@ fun UmamiRecipeDetailScreen(
                                     modifier = Modifier
                                         .padding(12.dp)
                                         .fillMaxWidth()
-                                        .clickable { recipe.User.id.let { navController.navigate("user_detail/$it") } },
+                                        .clickable { 
+                                            val uid = recipe.User.id
+                                            if (!uid.isNullOrBlank()) {
+                                                navController.navigate("user_detail/$uid")
+                                            }
+                                        },
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     if (!recipe.User.avatarUrl.isNullOrBlank()) {
@@ -320,7 +330,11 @@ fun UmamiRecipeDetailScreen(
                                     if (currentUserId != null && recipe.User.id != currentUserId) {
                                         Button(
                                             onClick = {
-                                                viewModel.toggleFollow(recipe.User.id, isFollowing)
+                                                if (isBlocked) {
+                                                    Toast.makeText(context, "Действие недоступно: аккаунт заблокирован", Toast.LENGTH_SHORT).show()
+                                                } else {
+                                                    viewModel.toggleFollow(recipe.User.id, isFollowing)
+                                                }
                                             },
                                             shape = RoundedCornerShape(20.dp),
                                             colors = ButtonDefaults.buttonColors(
@@ -357,8 +371,12 @@ fun UmamiRecipeDetailScreen(
                             Spacer(modifier = Modifier.height(16.dp))
                             Button(
                                 onClick = { 
-                                    viewModel.markAsCooked(recipeId)
-                                    Toast.makeText(context, "Отмечено как приготовленное!", Toast.LENGTH_SHORT).show()
+                                    if (isBlocked) {
+                                        Toast.makeText(context, "Действие недоступно: аккаунт заблокирован", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        viewModel.markAsCooked(recipeId)
+                                        Toast.makeText(context, "Отмечено как приготовленное!", Toast.LENGTH_SHORT).show()
+                                    }
                                 },
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
@@ -507,12 +525,24 @@ fun UmamiRecipeDetailScreen(
                                     Text("Отзывы (${comments.size})", fontWeight = FontWeight.Bold, fontFamily = InterFontFamily)
                                     Spacer(modifier = Modifier.height(8.dp))
                                     
-                                    comments.forEach { comment ->
+                                    comments.filter { it.author?.isBlocked != true }.forEach { comment ->
                                         CommentItem(
                                             comment = comment,
                                             currentUserId = currentUserId,
-                                            onLikeClick = { viewModel.toggleCommentLike(it) },
-                                            onReplyClick = { replyingTo = it }
+                                            onLikeClick = { commentId ->
+                                                if (isBlocked) {
+                                                    Toast.makeText(context, "Действие недоступно: аккаунт заблокирован", Toast.LENGTH_SHORT).show()
+                                                } else {
+                                                    viewModel.toggleCommentLike(commentId)
+                                                }
+                                            },
+                                            onReplyClick = { replyComment ->
+                                                if (isBlocked) {
+                                                    Toast.makeText(context, "Действие недоступно: аккаунт заблокирован", Toast.LENGTH_SHORT).show()
+                                                } else {
+                                                    replyingTo = replyComment
+                                                }
+                                            }
                                         )
                                     }
 
@@ -570,7 +600,9 @@ fun UmamiRecipeDetailScreen(
                                             shape = if (replyingTo != null) RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp) else RoundedCornerShape(24.dp),
                                             trailingIcon = {
                                                 IconButton(onClick = {
-                                                    if (newComment.isNotBlank()) {
+                                                    if (isBlocked) {
+                                                        Toast.makeText(context, "Действие недоступно: аккаунт заблокирован", Toast.LENGTH_SHORT).show()
+                                                    } else if (newComment.isNotBlank()) {
                                                         viewModel.postComment(
                                                             recipeId, newComment, 
                                                             if (replyingTo == null) rating else null, 
@@ -664,7 +696,7 @@ fun CommentItem(
         }
         
         // Render replies
-        comment.replies?.forEach { reply ->
+        comment.replies?.filter { it.author?.isBlocked != true }?.forEach { reply ->
             CommentItem(
                 comment = reply,
                 currentUserId = currentUserId,
@@ -765,4 +797,56 @@ fun PersonalNoteSection(initialNote: String, onSave: (String) -> Unit) {
 @Composable
 fun Icon(imageVector: androidx.compose.ui.graphics.vector.ImageVector, contentDescription: String?, size: androidx.compose.ui.unit.Dp, tint: Color) {
     Icon(imageVector, contentDescription, modifier = Modifier.size(size), tint = tint)
+}
+@Composable
+fun LikesSection(likes: List<RecipeLike>, navController: NavController) {
+    if (likes.isEmpty()) return
+    
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        val displayLikes = likes.take(5)
+        Box(modifier = Modifier.padding(end = 8.dp)) {
+            displayLikes.forEachIndexed { index, like ->
+                val user = like.user
+                Surface(
+                    modifier = Modifier.padding(start = (index * 20).dp).size(28.dp),
+                    shape = CircleShape,
+                    border = androidx.compose.foundation.BorderStroke(2.dp, Color.White),
+                    color = Color.LightGray
+                ) {
+                    if (!user?.avatarUrl.isNullOrBlank()) {
+                        coil.compose.AsyncImage(
+                            model = normalizeImageUrl(user!!.avatarUrl),
+                            contentDescription = null,
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                        )
+                    } else {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.background(UmamiOrange.copy(alpha = 0.2f))) {
+                            Text(user?.username?.firstOrNull()?.uppercase() ?: "?", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = UmamiOrange)
+                        }
+                    }
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.width(if (displayLikes.isNotEmpty()) ( (displayLikes.size - 1) * 20 + 8).dp else 0.dp))
+
+        val text = if (likes.size > 1) {
+            "Нравится ${likes.size} пользователям"
+        } else {
+            "Нравится ${likes[0].user?.username ?: "1 пользователю"}"
+        }
+        
+        Text(
+            text = text,
+            fontSize = 12.sp,
+            fontFamily = InterFontFamily,
+            color = Color.Gray,
+            modifier = Modifier.clickable { 
+                // Можно открыть список пользователей
+            }
+        )
+    }
 }

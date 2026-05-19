@@ -102,6 +102,17 @@ class AdminViewModel(private val service: AdminService = ApiClient.adminService)
         }
     }
 
+    fun unblockUser(id: String) {
+        viewModelScope.launch {
+            try {
+                service.unblockUser(id)
+                loadUsers() // Refresh list
+            } catch (e: Exception) {
+                android.util.Log.e("AdminVM", "Failed to unblock user", e)
+            }
+        }
+    }
+
     private val _reports = MutableStateFlow<AdminState<List<ReportItem>>>(AdminState.Idle)
     val reports = _reports.asStateFlow()
 
@@ -123,6 +134,382 @@ class AdminViewModel(private val service: AdminService = ApiClient.adminService)
                 loadReports()
             } catch (e: Exception) {
                 android.util.Log.e("AdminVM", "Failed to update report", e)
+            }
+        }
+    }
+
+    private val _appeals = MutableStateFlow<AdminState<List<AppealItem>>>(AdminState.Idle)
+    val appeals = _appeals.asStateFlow()
+
+    fun loadAppeals() {
+        viewModelScope.launch {
+            _appeals.value = AdminState.Loading
+            try {
+                _appeals.value = AdminState.Success(service.getAppeals())
+            } catch (e: Exception) {
+                _appeals.value = AdminState.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+
+    fun updateAppealStatus(id: Long, status: String, adminNotes: String = "") {
+        viewModelScope.launch {
+            try {
+                service.updateAppealStatus(id, mapOf("status" to status, "admin_notes" to adminNotes))
+                loadAppeals()
+                loadUsers() // In case it unblocked a user
+            } catch (e: Exception) {
+                android.util.Log.e("AdminVM", "Failed to update appeal", e)
+            }
+        }
+    }
+
+    // --- Metadata States ---
+    private val _categories = MutableStateFlow<AdminState<List<Category>>>(AdminState.Idle)
+    val categories = _categories.asStateFlow()
+
+    private val _kitchens = MutableStateFlow<AdminState<List<Category>>>(AdminState.Idle)
+    val kitchens = _kitchens.asStateFlow()
+
+    private val _cookingTypes = MutableStateFlow<AdminState<List<Category>>>(AdminState.Idle)
+    val cookingTypes = _cookingTypes.asStateFlow()
+
+    private val _celebrations = MutableStateFlow<AdminState<List<Category>>>(AdminState.Idle)
+    val celebrations = _celebrations.asStateFlow()
+
+    private val _units = MutableStateFlow<AdminState<List<UnitModel>>>(AdminState.Idle)
+    val units = _units.asStateFlow()
+
+    private val _ingredients = MutableStateFlow<AdminState<List<IngredientModel>>>(AdminState.Idle)
+    val ingredients = _ingredients.asStateFlow()
+
+    // --- Loaders ---
+    fun loadCategories() {
+        viewModelScope.launch {
+            _categories.value = AdminState.Loading
+            try {
+                _categories.value = AdminState.Success(ApiClient.recipeService.getCategories())
+            } catch (e: Exception) {
+                _categories.value = AdminState.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+
+    fun loadKitchens() {
+        viewModelScope.launch {
+            _kitchens.value = AdminState.Loading
+            try {
+                _kitchens.value = AdminState.Success(ApiClient.recipeService.getKitchens())
+            } catch (e: Exception) {
+                _kitchens.value = AdminState.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+
+    fun loadCookingTypes() {
+        viewModelScope.launch {
+            _cookingTypes.value = AdminState.Loading
+            try {
+                _cookingTypes.value = AdminState.Success(ApiClient.recipeService.getCookingTypes())
+            } catch (e: Exception) {
+                _cookingTypes.value = AdminState.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+
+    fun loadCelebrations() {
+        viewModelScope.launch {
+            _celebrations.value = AdminState.Loading
+            try {
+                _celebrations.value = AdminState.Success(ApiClient.recipeService.getCelebrations())
+            } catch (e: Exception) {
+                _celebrations.value = AdminState.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+
+    fun loadUnits() {
+        viewModelScope.launch {
+            _units.value = AdminState.Loading
+            try {
+                _units.value = AdminState.Success(service.getUnits())
+            } catch (e: Exception) {
+                _units.value = AdminState.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+
+    fun loadIngredients(search: String? = null) {
+        viewModelScope.launch {
+            _ingredients.value = AdminState.Loading
+            try {
+                _ingredients.value = AdminState.Success(service.getIngredients(search))
+            } catch (e: Exception) {
+                _ingredients.value = AdminState.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+
+    // --- Categories CRUD ---
+    fun createCategory(name: String, description: String?, imageUrl: String?, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val body = mutableMapOf("name" to name)
+                if (description != null) body["description"] = description
+                if (imageUrl != null) body["image_url"] = imageUrl
+                service.createCategory(body)
+                loadCategories()
+                onComplete(true)
+            } catch (e: Exception) {
+                android.util.Log.e("AdminVM", "Failed to create category", e)
+                onComplete(false)
+            }
+        }
+    }
+
+    fun updateCategory(id: String, name: String, description: String?, imageUrl: String?, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val body = mutableMapOf("name" to name)
+                if (description != null) body["description"] = description
+                if (imageUrl != null) body["image_url"] = imageUrl
+                service.updateCategory(id, body)
+                loadCategories()
+                onComplete(true)
+            } catch (e: Exception) {
+                android.util.Log.e("AdminVM", "Failed to update category", e)
+                onComplete(false)
+            }
+        }
+    }
+
+    fun deleteCategory(id: String, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                service.deleteCategory(id)
+                loadCategories()
+                onComplete(true)
+            } catch (e: Exception) {
+                android.util.Log.e("AdminVM", "Failed to delete category", e)
+                onComplete(false)
+            }
+        }
+    }
+
+    // --- Kitchens CRUD ---
+    fun createKitchen(name: String, imageUrl: String?, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val body = mutableMapOf("name" to name)
+                if (imageUrl != null) body["image_url"] = imageUrl
+                service.createKitchen(body)
+                loadKitchens()
+                onComplete(true)
+            } catch (e: Exception) {
+                android.util.Log.e("AdminVM", "Failed to create kitchen", e)
+                onComplete(false)
+            }
+        }
+    }
+
+    fun updateKitchen(id: String, name: String, imageUrl: String?, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val body = mutableMapOf("name" to name)
+                if (imageUrl != null) body["image_url"] = imageUrl
+                service.updateKitchen(id, body)
+                loadKitchens()
+                onComplete(true)
+            } catch (e: Exception) {
+                android.util.Log.e("AdminVM", "Failed to update kitchen", e)
+                onComplete(false)
+            }
+        }
+    }
+
+    fun deleteKitchen(id: String, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                service.deleteKitchen(id)
+                loadKitchens()
+                onComplete(true)
+            } catch (e: Exception) {
+                android.util.Log.e("AdminVM", "Failed to delete kitchen", e)
+                onComplete(false)
+            }
+        }
+    }
+
+    // --- Cooking Types CRUD ---
+    fun createCookingType(name: String, imageUrl: String?, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val body = mutableMapOf("name" to name)
+                if (imageUrl != null) body["image_url"] = imageUrl
+                service.createCookingType(body)
+                loadCookingTypes()
+                onComplete(true)
+            } catch (e: Exception) {
+                android.util.Log.e("AdminVM", "Failed to create cooking type", e)
+                onComplete(false)
+            }
+        }
+    }
+
+    fun updateCookingType(id: String, name: String, imageUrl: String?, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val body = mutableMapOf("name" to name)
+                if (imageUrl != null) body["image_url"] = imageUrl
+                service.updateCookingType(id, body)
+                loadCookingTypes()
+                onComplete(true)
+            } catch (e: Exception) {
+                android.util.Log.e("AdminVM", "Failed to update cooking type", e)
+                onComplete(false)
+            }
+        }
+    }
+
+    fun deleteCookingType(id: String, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                service.deleteCookingType(id)
+                loadCookingTypes()
+                onComplete(true)
+            } catch (e: Exception) {
+                android.util.Log.e("AdminVM", "Failed to delete cooking type", e)
+                onComplete(false)
+            }
+        }
+    }
+
+    // --- Celebrations CRUD ---
+    fun createCelebration(name: String, imageUrl: String?, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val body = mutableMapOf("name" to name)
+                if (imageUrl != null) body["image_url"] = imageUrl
+                service.createCelebration(body)
+                loadCelebrations()
+                onComplete(true)
+            } catch (e: Exception) {
+                android.util.Log.e("AdminVM", "Failed to create celebration", e)
+                onComplete(false)
+            }
+        }
+    }
+
+    fun updateCelebration(id: String, name: String, imageUrl: String?, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val body = mutableMapOf("name" to name)
+                if (imageUrl != null) body["image_url"] = imageUrl
+                service.updateCelebration(id, body)
+                loadCelebrations()
+                onComplete(true)
+            } catch (e: Exception) {
+                android.util.Log.e("AdminVM", "Failed to update celebration", e)
+                onComplete(false)
+            }
+        }
+    }
+
+    fun deleteCelebration(id: String, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                service.deleteCelebration(id)
+                loadCelebrations()
+                onComplete(true)
+            } catch (e: Exception) {
+                android.util.Log.e("AdminVM", "Failed to delete celebration", e)
+                onComplete(false)
+            }
+        }
+    }
+
+    // --- Units CRUD ---
+    fun createUnit(name: String, shortName: String, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                service.createUnit(mapOf("name" to name, "short_name" to shortName))
+                loadUnits()
+                onComplete(true)
+            } catch (e: Exception) {
+                android.util.Log.e("AdminVM", "Failed to create unit", e)
+                onComplete(false)
+            }
+        }
+    }
+
+    fun updateUnit(id: Long, name: String, shortName: String, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                service.updateUnit(id, mapOf("name" to name, "short_name" to shortName))
+                loadUnits()
+                onComplete(true)
+            } catch (e: Exception) {
+                android.util.Log.e("AdminVM", "Failed to update unit", e)
+                onComplete(false)
+            }
+        }
+    }
+
+    fun deleteUnit(id: Long, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                service.deleteUnit(id)
+                loadUnits()
+                onComplete(true)
+            } catch (e: Exception) {
+                android.util.Log.e("AdminVM", "Failed to delete unit", e)
+                onComplete(false)
+            }
+        }
+    }
+
+    // --- Ingredients CRUD ---
+    fun createIngredient(name: String, unitId: Long?, description: String?, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val body = mutableMapOf<String, Any>("name" to name)
+                if (unitId != null) body["unit_id"] = unitId
+                if (description != null) body["description"] = description
+                service.createIngredient(body)
+                loadIngredients()
+                onComplete(true)
+            } catch (e: Exception) {
+                android.util.Log.e("AdminVM", "Failed to create ingredient", e)
+                onComplete(false)
+            }
+        }
+    }
+
+    fun updateIngredient(id: String, name: String, unitId: Long?, description: String?, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val body = mutableMapOf<String, Any>("name" to name)
+                if (unitId != null) body["unit_id"] = unitId
+                if (description != null) body["description"] = description
+                service.updateIngredient(id, body)
+                loadIngredients()
+                onComplete(true)
+            } catch (e: Exception) {
+                android.util.Log.e("AdminVM", "Failed to update ingredient", e)
+                onComplete(false)
+            }
+        }
+    }
+
+    fun deleteIngredient(id: String, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                service.deleteIngredient(id)
+                loadIngredients()
+                onComplete(true)
+            } catch (e: Exception) {
+                android.util.Log.e("AdminVM", "Failed to delete ingredient", e)
+                onComplete(false)
             }
         }
     }

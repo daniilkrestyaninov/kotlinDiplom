@@ -12,6 +12,8 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import com.google.firebase.messaging.FirebaseMessaging
@@ -57,6 +59,27 @@ class MainActivity : ComponentActivity() {
             val token = task.result
             Log.d("MainActivity", "FCM Token: $token")
             notificationViewModel.updateFcmToken(token)
+            
+            // Subscribe to global broadcast topic
+            FirebaseMessaging.getInstance().subscribeToTopic("global_broadcast")
+                .addOnCompleteListener { subTask ->
+                    if (subTask.isSuccessful) {
+                        Log.d("MainActivity", "Subscribed to global_broadcast topic")
+                    }
+                }
+        }
+
+        // Create notification channel for Android 8.0+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channelId = "umami_notifications"
+            val channelName = "Umami Notifications"
+            val importance = NotificationManager.IMPORTANCE_HIGH
+            val channel = NotificationChannel(channelId, channelName, importance).apply {
+                description = "System and broadcast notifications"
+            }
+            val notificationManager = getSystemService(NotificationManager::class.java)
+            notificationManager.createNotificationChannel(channel)
+            Log.d("MainActivity", "Notification channel created")
         }
 
         // 2. Вместо setContentView используем setContent

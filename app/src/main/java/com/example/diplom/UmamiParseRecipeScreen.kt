@@ -281,8 +281,8 @@ fun UmamiParseRecipeScreen(navController: NavController) {
 
                 item {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Сделать приватным", fontFamily = InterFontFamily, modifier = Modifier.weight(1f))
-                        Switch(checked = isPrivate, onCheckedChange = { isPrivate = it }, colors = SwitchDefaults.colors(checkedThumbColor = UmamiOrange, checkedTrackColor = UmamiOrange.copy(alpha = 0.3f)))
+                        Text("Сделать приватным (обязательно для импорта)", fontFamily = InterFontFamily, modifier = Modifier.weight(1f), fontSize = 12.sp, color = Color.Gray)
+                        Switch(checked = true, onCheckedChange = { }, enabled = false, colors = SwitchDefaults.colors(checkedThumbColor = UmamiOrange, checkedTrackColor = UmamiOrange.copy(alpha = 0.3f)))
                     }
                 }
 
@@ -304,7 +304,8 @@ fun UmamiParseRecipeScreen(navController: NavController) {
                                         cookingTime = 30, // Default or parsed if available
                                         portion = 1,
                                         calorific = null,
-                                        isPrivate = isPrivate,
+                                        isPrivate = true,
+                                        isParsed = true,
                                         ingredients = ingredients.map { 
                                             IngredientInput(name = it.name ?: "", quantity = it.quantity ?: "", unit = it.unit ?: "")
                                         },

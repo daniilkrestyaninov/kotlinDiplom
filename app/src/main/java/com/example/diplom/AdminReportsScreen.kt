@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -65,8 +66,8 @@ fun AdminReportsScreen(navController: NavController, viewModel: AdminViewModel =
                         items(state.data) { report ->
                             ReportCard(
                                 report = report,
-                                onNavigateToUser = { id -> navController.navigate("user_detail/$id") },
-                                onNavigateToRecipe = { id -> navController.navigate("recipe_detail/$id") },
+                                onNavigateToUser = { id -> if (id.isNotBlank()) navController.navigate("user_detail/$id") },
+                                onNavigateToRecipe = { id -> if (id.isNotBlank()) navController.navigate("recipe_detail/$id") },
                                 onManageUser = { navController.navigate("admin_users") },
                                 onStatusUpdate = { newStatus ->
                                     viewModel.updateReportStatus(report.id, newStatus)
@@ -144,35 +145,40 @@ fun ReportCard(
             Spacer(modifier = Modifier.height(12.dp))
             Text("Отправил: ${report.Reporter?.username ?: "???"}", fontSize = 13.sp, fontFamily = InterFontFamily)
             
-            val objectText = if (report.type == "recipe") {
-                "Рецепт: ${report.ReportedRecipe?.title ?: "???"}"
-            } else {
-                "Пользователь: ${report.ReportedUser?.username ?: "???"}"
-            }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable {
-                        if (report.type == "recipe" && report.ReportedRecipe != null) {
-                            onNavigateToRecipe(report.ReportedRecipe.id.toString())
-                        } else if (report.ReportedUser != null) {
-                            onNavigateToUser(report.ReportedUser.id.toString())
-                        }
-                    }
-                    .padding(vertical = 4.dp)
-            ) {
-                Text(
-                    text = "Объект: $objectText",
-                    fontSize = 13.sp,
-                    fontFamily = InterFontFamily,
-                    color = UmamiOrange,
-                    fontWeight = FontWeight.Bold
-                )
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            if (report.type == "recipe" && report.ReportedRecipe != null) {
+                OutlinedButton(
+                    onClick = { onNavigateToRecipe(report.ReportedRecipe.id.toString()) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = UmamiOrange)
+                ) {
+                    Icon(Icons.Default.Restaurant, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("ПЕРЕЙТИ К РЕЦЕПТУ: ${report.ReportedRecipe.title}", fontSize = 12.sp)
+                }
+            } else if (report.ReportedUser != null) {
+                OutlinedButton(
+                    onClick = { onNavigateToUser(report.ReportedUser.id.toString()) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = UmamiOrange)
+                ) {
+                    Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("ПЕРЕЙТИ В ПРОФИЛЬ: ${report.ReportedUser.username}", fontSize = 12.sp)
+                }
             }
             
             if (report.status == "pending") {
                 Spacer(modifier = Modifier.height(16.dp))
+                Divider()
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Text("Действия модератора:", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+                Spacer(modifier = Modifier.height(8.dp))
+                
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
                         onClick = { onStatusUpdate("resolved") },
@@ -180,15 +186,21 @@ fun ReportCard(
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
                         shape = RoundedCornerShape(8.dp)
                     ) {
-                        Text("Принять", fontSize = 12.sp)
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("ПРИНЯТЬ", fontWeight = FontWeight.Bold)
+                            Text("и удалить объект", fontSize = 9.sp)
+                        }
                     }
                     Button(
                         onClick = { onStatusUpdate("dismissed") },
                         modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.Gray),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray),
                         shape = RoundedCornerShape(8.dp)
                     ) {
-                        Text("Отклонить", fontSize = 12.sp)
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("ОТКЛОНИТЬ", color = Color.Black, fontWeight = FontWeight.Bold)
+                            Text("проигнорировать", fontSize = 9.sp, color = Color.Black)
+                        }
                     }
                 }
                 

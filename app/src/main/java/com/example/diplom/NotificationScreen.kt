@@ -118,13 +118,17 @@ fun NotificationScreen(
                                     viewModel.markAsRead(notification.id)
                                     when (notification.type) {
                                         NotificationType.FOLLOW -> {
+                                        if (notification.actorId != 0) {
                                             navController.navigate("user_detail/${notification.actorId}")
+                                        }
                                         }
                                         NotificationType.LIKE, NotificationType.COMMENT, NotificationType.REPLY, NotificationType.NEW_POST -> {
                                             notification.recipeId?.let {
                                                 navController.navigate("recipe_detail/$it")
                                             }
                                         }
+                                        NotificationType.SYSTEM -> { /* System notifications may not have a target */ }
+                                        else -> {}
                                     }
                                 }
                             )
@@ -210,6 +214,8 @@ fun NotificationItem(
                     NotificationType.NEW_POST -> Icons.Default.NewReleases
                     NotificationType.COMMENT -> Icons.Default.Comment
                     NotificationType.REPLY -> Icons.Default.Reply
+                    NotificationType.SYSTEM -> Icons.Default.Info
+                    else -> Icons.Default.Notifications
                 }
                 val iconColor = when (notification.type) {
                     NotificationType.LIKE -> Color(0xFFFF6B6B)
@@ -217,6 +223,8 @@ fun NotificationItem(
                     NotificationType.NEW_POST -> Color(0xFF51CF66)
                     NotificationType.COMMENT -> Color(0xFFFCC419)
                     NotificationType.REPLY -> Color(0xFF94D82D)
+                    NotificationType.SYSTEM -> Color(0xFFADB5BD)
+                    else -> Color.Gray
                 }
 
                 Box(
@@ -244,10 +252,14 @@ fun NotificationItem(
                     NotificationType.NEW_POST -> "опубликовал(а) новый рецепт"
                     NotificationType.COMMENT -> "прокомментировал(а) ваш рецепт"
                     NotificationType.REPLY -> "ответил(а) на ваш комментарий"
+                    NotificationType.SYSTEM -> notification.message ?: "Системное уведомление"
+                    else -> ""
                 }
 
+                val finalActorName = if (notification.type == NotificationType.SYSTEM) "Umami" else actorName
+
                 Text(
-                    text = "$actorName $message",
+                    text = if (notification.type == NotificationType.SYSTEM) message else "$finalActorName $message",
                     fontFamily = InterFontFamily,
                     fontSize = 14.sp,
                     lineHeight = 20.sp,

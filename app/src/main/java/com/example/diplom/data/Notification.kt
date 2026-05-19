@@ -3,7 +3,7 @@ package com.example.diplom.data
 import com.google.gson.annotations.SerializedName
 
 enum class NotificationType {
-    LIKE, FOLLOW, NEW_POST, COMMENT, REPLY
+    LIKE, FOLLOW, NEW_POST, COMMENT, REPLY, SYSTEM
 }
 
 data class Notification(
@@ -13,6 +13,7 @@ data class Notification(
     val type: NotificationType,
     @SerializedName("recipe_id") val recipeId: Int? = null,
     @SerializedName("comment_id") val commentId: Int? = null,
+    val message: String? = null,
     @SerializedName("is_read") val isRead: Boolean,
     @SerializedName("created_at") val createdAt: String? = null,
     

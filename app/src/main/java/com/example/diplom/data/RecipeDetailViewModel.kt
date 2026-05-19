@@ -118,7 +118,7 @@ class RecipeDetailViewModel : ViewModel() {
             val newLikes = if (isCurrentlyLiked) {
                 currentLikes.filter { it.userId != currentUserId }
             } else {
-                currentLikes + RecipeLike(currentUserId)
+                currentLikes + RecipeLike(currentUserId, null)
             }
             
             val updatedRecipe = currentState.recipe.copy(

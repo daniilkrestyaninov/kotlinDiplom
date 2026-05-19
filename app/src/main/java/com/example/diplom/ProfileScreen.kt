@@ -64,6 +64,7 @@ fun UmamiProfileScreen(
     
     // Verification
     var showVerificationDialog by remember { mutableStateOf(false) }
+    var showAppealDialog by remember { mutableStateOf(false) }
 
     // Avatar upload
     var currentAvatarUrl by remember(user?.avatarUrl) { mutableStateOf(user?.avatarUrl) }
@@ -248,6 +249,35 @@ fun UmamiProfileScreen(
                             }
                         }
                         Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Color.Gray)
+                    }
+
+                    // Blocked notification
+                    if (isLoggedIn && user?.isBlocked == true) {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+                            color = Color(0xFFFFEBEE),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Block, contentDescription = null, tint = Color.Red, modifier = Modifier.size(20.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Ваш аккаунт заблокирован", color = Color.Red, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                }
+                                Text(
+                                    "Взаимодействие с контентом ограничено. Вы можете оспорить блокировку.",
+                                    fontSize = 12.sp,
+                                    color = Color.DarkGray,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                                TextButton(
+                                    onClick = { showAppealDialog = true },
+                                    modifier = Modifier.align(Alignment.End)
+                                ) {
+                                    Text("Оспорить", color = Color.Red, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
                     }
 
                     // Bio display
@@ -445,6 +475,59 @@ fun UmamiProfileScreen(
             }
         )
     }
+
+    if (showAppealDialog) {
+        AppealDialog(
+            onDismiss = { showAppealDialog = false },
+            onSubmit = { message ->
+                scope.launch {
+                    try {
+                        userService.createAppeal(mapOf("message" to message))
+                        android.widget.Toast.makeText(context, "Апелляция отправлена", android.widget.Toast.LENGTH_SHORT).show()
+                    } catch (e: Exception) {
+                        android.widget.Toast.makeText(context, "Ошибка отправки апелляции", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
+                showAppealDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+fun AppealDialog(onDismiss: () -> Unit, onSubmit: (message: String) -> Unit) {
+    var message by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Оспорить блокировку", fontFamily = InterFontFamily, fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Опишите причину, по которой мы должны разблокировать ваш аккаунт.", fontSize = 13.sp, color = Color.Gray)
+                OutlinedTextField(
+                    value = message,
+                    onValueChange = { message = it },
+                    placeholder = { Text("Ваше сообщение...") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    minLines = 3
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { if (message.isNotBlank()) onSubmit(message) },
+                colors = ButtonDefaults.buttonColors(containerColor = UmamiOrange)
+            ) {
+                Text("Отправить")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Отмена")
+            }
+        }
+    )
 }
 
 @Composable

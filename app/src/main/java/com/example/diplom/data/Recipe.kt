@@ -16,6 +16,7 @@ data class Recipe(
     val carbohydrates: Float? = null,
     @SerializedName("is_private") val isPrivate: Boolean? = false,
     @SerializedName("is_generated") val isGenerated: Boolean? = false,
+    @SerializedName("is_parsed") val isParsed: Boolean? = false,
     @SerializedName("kitchen_id") val kitchenId: String? = null,
     @SerializedName("celebration_id") val celebrationId: String? = null,
     @SerializedName("cooking_id") val cookingId: String? = null,
@@ -48,7 +49,8 @@ data class TasteAverages(
 )
 
 data class RecipeLike(
-    @SerializedName("user_id") val userId: String
+    @SerializedName("user_id") val userId: String,
+    @SerializedName("User") val user: User? = null
 )
 
 data class RecipeStep(
@@ -79,7 +81,8 @@ data class User(
     @SerializedName("avatar_url") val avatarUrl: String?,
     @SerializedName("is_following") var isFollowing: Boolean? = null,
     val role: String? = "user",
-    @SerializedName("is_verified") val isVerified: Boolean? = false
+    @SerializedName("is_verified") val isVerified: Boolean? = false,
+    @SerializedName("is_blocked") val isBlocked: Boolean? = false
 )
 
 data class Category(
@@ -103,6 +106,7 @@ data class CreateRecipeRequest(
     val carbohydrates: Float? = null,
     @SerializedName("is_private") val isPrivate: Boolean = false,
     @SerializedName("is_generated") val isGenerated: Boolean = false,
+    @SerializedName("is_parsed") val isParsed: Boolean = false,
     @SerializedName("kitchen_id") val kitchenId: Int? = null,
     @SerializedName("celebration_id") val celebrationId: Int? = null,
     @SerializedName("cooking_id") val cookingId: Int? = null,

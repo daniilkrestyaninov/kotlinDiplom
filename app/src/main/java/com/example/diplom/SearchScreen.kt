@@ -37,6 +37,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 fun SearchScreen(
     navController: NavController,
     currentUserId: String? = null,
+    isBlocked: Boolean = false,
     searchViewModel: SearchViewModel = viewModel(),
     recipeViewModel: RecipeViewModel = viewModel()
 ) {
@@ -138,7 +139,7 @@ fun SearchScreen(
                     }
                     is SearchResultState.Success -> {
                         if (activeTab == 0) {
-                            RecipeResults(state.recipes, navController, currentUserId, recipeViewModel)
+                            RecipeResults(state.recipes, navController, currentUserId, isBlocked, recipeViewModel)
                         } else {
                             UserResults(state.users, navController)
                         }
@@ -199,16 +200,19 @@ fun RecipeResults(
     recipes: List<Recipe>, 
     navController: NavController, 
     currentUserId: String?,
+    isBlocked: Boolean = false,
     viewModel: RecipeViewModel
 ) {
-    if (recipes.isEmpty()) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val activeRecipes = recipes.filter { it.User?.isBlocked != true }
+    if (activeRecipes.isEmpty()) {
         EmptySearchState(Icons.Default.RestaurantMenu, "Рецепты не найдены")
     } else {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 16.dp)
         ) {
-            items(recipes) { recipe ->
+            items(activeRecipes) { recipe ->
                 val isLiked = recipe.likes?.any { it.userId == currentUserId } ?: false
                 val isFavorited = recipe.isFavorited ?: false
                 
@@ -217,7 +221,14 @@ fun RecipeResults(
                     navController = navController,
                     currentUserId = currentUserId,
                     isFavorited = isFavorited,
-                    onLikeClick = { viewModel.toggleLike(recipe.id.toString(), isLiked, currentUserId) },
+                    isBlocked = isBlocked,
+                    onLikeClick = {
+                        if (isBlocked) {
+                            android.widget.Toast.makeText(context, "Действие недоступно: аккаунт заблокирован", android.widget.Toast.LENGTH_SHORT).show()
+                        } else {
+                            viewModel.toggleLike(recipe.id.toString(), isLiked, currentUserId)
+                        }
+                    },
                     onCommentClick = { navController.navigate("recipe_detail/${recipe.id}?tab=comments") },
                     onFavoriteClick = { viewModel.toggleFavorite(recipe.id, isFavorited) }
                 )
@@ -228,7 +239,8 @@ fun RecipeResults(
 
 @Composable
 fun UserResults(users: List<User>, navController: NavController) {
-    if (users.isEmpty()) {
+    val activeUsers = users.filter { it.isBlocked != true }
+    if (activeUsers.isEmpty()) {
         EmptySearchState(Icons.Default.PersonSearch, "Пользователи не найдены")
     } else {
         LazyColumn(
@@ -236,11 +248,11 @@ fun UserResults(users: List<User>, navController: NavController) {
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            items(users) { user ->
+            items(activeUsers) { user ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { navController.navigate("user_detail/${user.id}") },
+                        .clickable { if (user.id.isNotBlank()) navController.navigate("user_detail/${user.id}") },
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     AsyncImage(

@@ -107,6 +107,10 @@ fun AdminUsersScreen(navController: NavController, viewModel: AdminViewModel = v
             onBlock = {
                 viewModel.blockUser(selectedUser!!.id)
                 showEditDialog = false
+            },
+            onUnblock = {
+                viewModel.unblockUser(selectedUser!!.id)
+                showEditDialog = false
             }
         )
     }
@@ -170,7 +174,8 @@ fun AdminEditUserDialog(
     user: User,
     onDismiss: () -> Unit,
     onSave: (name: String, bio: String, roleId: Int) -> Unit,
-    onBlock: () -> Unit
+    onBlock: () -> Unit,
+    onUnblock: () -> Unit
 ) {
     var name by remember { mutableStateOf(user.name ?: "") }
     var bio by remember { mutableStateOf(user.bio ?: "") }
@@ -237,8 +242,14 @@ fun AdminEditUserDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onBlock) {
-                Text("Заблокировать", color = Color.Red, fontFamily = InterFontFamily)
+            if (user.isBlocked == true) {
+                TextButton(onClick = onUnblock) {
+                    Text("Разблокировать", color = Color(0xFF4CAF50), fontFamily = InterFontFamily)
+                }
+            } else {
+                TextButton(onClick = onBlock) {
+                    Text("Заблокировать", color = Color.Red, fontFamily = InterFontFamily)
+                }
             }
         }
     )

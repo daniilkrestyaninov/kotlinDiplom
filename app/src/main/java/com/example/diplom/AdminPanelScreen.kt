@@ -70,12 +70,32 @@ fun AdminPanelScreen(navController: NavController, viewModel: AdminViewModel = v
             }
             
             item {
-                AdminMenuCard(
-                    title = "Жалобы",
-                    icon = Icons.Default.Report,
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = { navController.navigate("admin_reports") }
-                )
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    AdminMenuCard(
+                        title = "Жалобы",
+                        icon = Icons.Default.Report,
+                        modifier = Modifier.weight(1f),
+                        onClick = { navController.navigate("admin_reports") }
+                    )
+                    AdminMenuCard(
+                        title = "Апелляции",
+                        icon = Icons.Default.Gavel,
+                        modifier = Modifier.weight(1f),
+                        onClick = { navController.navigate("admin_appeals") }
+                    )
+                }
+            }
+
+            item {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    AdminMenuCard(
+                        title = "Справочники",
+                        icon = Icons.Default.FolderOpen,
+                        modifier = Modifier.weight(1f),
+                        onClick = { navController.navigate("admin_metadata") }
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
+                }
             }
 
             item {

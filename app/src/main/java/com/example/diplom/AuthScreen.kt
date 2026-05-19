@@ -1,4 +1,4 @@
-﻿package com.example.diplom
+package com.example.diplom
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -79,6 +79,12 @@ fun AuthModal(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(24.dp)
                     )
+                    TextButton(
+                        onClick = { viewModel.resendCode(verificationState.email) },
+                        modifier = Modifier.align(Alignment.End)
+                    ) {
+                        Text("Переотправить код", color = UmamiOrange, fontSize = 12.sp)
+                    }
                 } else {
                     if (!isLogin) {
                         OutlinedTextField(

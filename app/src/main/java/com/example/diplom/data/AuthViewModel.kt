@@ -57,7 +57,19 @@ class AuthViewModel(private val tokenManager: TokenManager) : ViewModel() {
                 tokenManager.saveToken(res.token)
                 _state.value = AuthState.Success(res.user)
             } catch (e: Exception) {
-                _state.value = AuthState.Error("Ошибка входа. Проверьте данные или подключение.")
+                val msg = e.message ?: ""
+                if (msg.contains("403")) {
+                    // Если это ошибка 403, переключаем на экран подтверждения
+                    // так как почта скорее всего не подтверждена
+                    _state.value = AuthState.VerificationRequired(email, pass)
+                } else {
+                    val displayMsg = when {
+                        msg.contains("404") -> "Пользователь не найден"
+                        msg.contains("401") -> "Неверный пароль"
+                        else -> "Ошибка входа. Проверьте данные или подключение."
+                    }
+                    _state.value = AuthState.Error(displayMsg)
+                }
             }
         }
     }
@@ -67,9 +79,22 @@ class AuthViewModel(private val tokenManager: TokenManager) : ViewModel() {
             _state.value = AuthState.Loading
             try {
                 service.register(RegisterRequest(username, name, email, pass))
-                _state.value = AuthState.VerificationRequired(email = email, password = pass)
+                // Теперь переходим в режим подтверждения почты
+                _state.value = AuthState.VerificationRequired(email, pass)
             } catch (e: Exception) {
-                _state.value = AuthState.Error("Ошибка регистрации. Попробуйте позже.")
+                android.util.Log.e("AuthViewModel", "Register failed", e)
+                _state.value = AuthState.Error("Ошибка регистрации. Возможно, email или логин уже заняты.")
+            }
+        }
+    }
+
+    fun resendCode(email: String) {
+        viewModelScope.launch {
+            try {
+                service.resendCode(mapOf("email" to email))
+            } catch (e: Exception) {
+                android.util.Log.e("AuthViewModel", "Resend failed", e)
+                _state.value = AuthState.Error("Ошибка переотправки кода.")
             }
         }
     }

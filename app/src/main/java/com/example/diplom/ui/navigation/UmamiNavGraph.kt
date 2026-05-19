@@ -34,6 +34,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.*
 import com.example.diplom.AdminPanelScreen
 import com.example.diplom.VerificationScreen
+import com.example.diplom.AdminMetadataScreen
 
 object Routes {
     const val MAIN = "main"
@@ -51,6 +52,8 @@ object Routes {
     const val ADMIN_USERS = "admin_users"
     const val ADMIN_REPORTS = "admin_reports"
     const val ADMIN_AUDIT_LOGS = "admin_audit_logs"
+    const val ADMIN_APPEALS = "admin_appeals"
+    const val ADMIN_METADATA = "admin_metadata"
     
     fun recipeDetail(recipeId: String, tab: String = "") = "recipe_detail/$recipeId?tab=$tab"
     fun userDetail(userId: String) = "user_detail/$userId"
@@ -58,12 +61,14 @@ object Routes {
 
 @Composable
 fun UmamiApp(tokenManager: TokenManager) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val authViewModel: AuthViewModel = viewModel(factory = AuthViewModel.provideFactory(tokenManager))
     val authState by authViewModel.state
     val isLoggedIn = authState is AuthState.Success
     val username = if (authState is AuthState.Success) (authState as AuthState.Success).user.username else null
     val currentUserId = if (authState is AuthState.Success) (authState as AuthState.Success).user.id else null
     val avatarUrl = if (authState is AuthState.Success) (authState as AuthState.Success).user.avatarUrl else null
+    val isBlocked = if (authState is AuthState.Success) (authState as AuthState.Success).user.isBlocked ?: false else false
 
     val notificationViewModel: com.example.diplom.data.NotificationViewModel = viewModel()
     val unreadCount by notificationViewModel.unreadCount.collectAsState()
@@ -124,7 +129,11 @@ fun UmamiApp(tokenManager: TokenManager) {
             if (showBottomBarAndTopBar) {
                 AddRecipeFab(onClick = {
                     if (isLoggedIn) {
-                        navController.navigate(Routes.ADD_RECIPE)
+                        if (isBlocked) {
+                            android.widget.Toast.makeText(context, "Действие недоступно: аккаунт заблокирован", android.widget.Toast.LENGTH_SHORT).show()
+                        } else {
+                            navController.navigate(Routes.ADD_RECIPE)
+                        }
                     } else {
                         showAuthModal = true
                     }
@@ -143,10 +152,10 @@ fun UmamiApp(tokenManager: TokenManager) {
             popExitTransition = { fadeOut(animationSpec = tween(150)) }
         ) {
             composable(Routes.MAIN) {
-                UmamiMainScreen(navController = navController, currentUserId = currentUserId)
+                UmamiMainScreen(navController = navController, currentUserId = currentUserId, isBlocked = isBlocked)
             }
             composable(Routes.SEARCH) {
-                SearchScreen(navController = navController, currentUserId = currentUserId)
+                SearchScreen(navController = navController, currentUserId = currentUserId, isBlocked = isBlocked)
             }
             composable(Routes.FAVORITES) {
                 if (!isLoggedIn) {
@@ -167,7 +176,7 @@ fun UmamiApp(tokenManager: TokenManager) {
             ) { backStackEntry ->
                 val recipeId = backStackEntry.arguments?.getString("recipeId") ?: ""
                 val tab = backStackEntry.arguments?.getString("tab") ?: ""
-                UmamiRecipeDetailScreen(navController = navController, recipeId = recipeId, initialTab = tab, currentUserId = currentUserId)
+                UmamiRecipeDetailScreen(navController = navController, recipeId = recipeId, initialTab = tab, currentUserId = currentUserId, isBlocked = isBlocked)
             }
             composable(
                 route = Routes.ADD_RECIPE,
@@ -189,7 +198,7 @@ fun UmamiApp(tokenManager: TokenManager) {
             }
             composable(Routes.USER_DETAIL, arguments = listOf(navArgument("userId") { type = NavType.StringType })) { backStackEntry ->
                 val userId = backStackEntry.arguments?.getString("userId") ?: ""
-                UmamiUserDetailScreen(navController = navController, userId = userId, currentUserId = currentUserId)
+                UmamiUserDetailScreen(navController = navController, userId = userId, currentUserId = currentUserId, isBlocked = isBlocked)
             }
             composable(Routes.PARSE_RECIPE) {
                 com.example.diplom.UmamiParseRecipeScreen(navController = navController)
@@ -215,6 +224,12 @@ fun UmamiApp(tokenManager: TokenManager) {
             }
             composable(Routes.ADMIN_AUDIT_LOGS) {
                 com.example.diplom.AdminAuditLogsScreen(navController = navController)
+            }
+            composable(Routes.ADMIN_APPEALS) {
+                com.example.diplom.AdminAppealsScreen(navController = navController)
+            }
+            composable(Routes.ADMIN_METADATA) {
+                AdminMetadataScreen(navController = navController)
             }
         }
         

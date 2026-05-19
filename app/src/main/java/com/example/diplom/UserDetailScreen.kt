@@ -33,7 +33,8 @@ import kotlinx.coroutines.launch
 fun UmamiUserDetailScreen(
     navController: NavController,
     userId: String,
-    currentUserId: String?
+    currentUserId: String?,
+    isBlocked: Boolean = false
 ) {
     val userService = ApiClient.userService
     val scope = rememberCoroutineScope()
@@ -71,7 +72,12 @@ fun UmamiUserDetailScreen(
                 }
             } catch (e: Exception) {
                 android.util.Log.e("UserDetail", "Load failed", e)
-                loadError = "Не удалось загрузить профиль"
+                val msg = e.message ?: ""
+                loadError = if (msg.contains("404") || msg.contains("403")) {
+                    "Пользователь заблокирован или не найден"
+                } else {
+                    "Не удалось загрузить профиль"
+                }
             } finally {
                 isLoading = false
             }
@@ -222,17 +228,21 @@ fun UmamiUserDetailScreen(
                             } else if (currentUserId != null) {
                                 Button(
                                     onClick = {
-                                        scope.launch {
-                                            try {
-                                                if (isFollowing) userService.unfollow(userId)
-                                                else userService.follow(userId)
-                                                isFollowing = !isFollowing
-                                                userRecipes = userRecipes.map { recipe ->
-                                                    recipe.copy(User = recipe.User?.copy(isFollowing = isFollowing))
-                                                }
-                                                // Refresh stats
-                                                profileData = userService.getUserProfile(userId)
-                                            } catch (e: Exception) {}
+                                        if (isBlocked) {
+                                            android.widget.Toast.makeText(context, "Действие недоступно: аккаунт заблокирован", android.widget.Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            scope.launch {
+                                                try {
+                                                    if (isFollowing) userService.unfollow(userId)
+                                                    else userService.follow(userId)
+                                                    isFollowing = !isFollowing
+                                                    userRecipes = userRecipes.map { recipe ->
+                                                        recipe.copy(User = recipe.User?.copy(isFollowing = isFollowing))
+                                                    }
+                                                    // Refresh stats
+                                                    profileData = userService.getUserProfile(userId)
+                                                } catch (e: Exception) {}
+                                            }
                                         }
                                     },
                                     colors = ButtonDefaults.buttonColors(
@@ -261,7 +271,11 @@ fun UmamiUserDetailScreen(
                             items(friends) { friend ->
                                 Column(
                                     horizontalAlignment = Alignment.CenterHorizontally, 
-                                    modifier = Modifier.width(64.dp).clickable { navController.navigate("user_detail/${friend.id}") }
+                                    modifier = Modifier.width(64.dp).clickable { 
+                                        if (friend.id.isNotBlank()) {
+                                            navController.navigate("user_detail/${friend.id}")
+                                        }
+                                    }
                                 ) {
                                     Box(modifier = Modifier.size(60.dp).clip(CircleShape).background(Color(0xFFF5F5F5))) {
                                         if (friend.avatarUrl != null) {

@@ -45,4 +45,7 @@ interface AuthService {
 
     @POST("auth/verify-email")
     suspend fun verifyEmail(@Body request: VerifyEmailRequest): VerifyEmailResponse
+
+    @POST("auth/resend-code")
+    suspend fun resendCode(@Body request: Map<String, String>): Map<String, String>
 }
