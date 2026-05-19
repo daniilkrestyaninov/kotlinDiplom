@@ -254,7 +254,7 @@ fun UmamiApp(tokenManager: TokenManager) {
             }
             composable(Routes.DIET_PLAN_EDITOR, arguments = listOf(navArgument("planId") { type = NavType.StringType; nullable = true; defaultValue = null })) { backStackEntry ->
                 val planId = backStackEntry.arguments?.getString("planId")
-                DietPlanEditorScreen(navController = navController, planId = planId)
+                DietPlanEditorScreen(navController = navController, planId = planId, currentUserId = currentUserId?.toString())
             }
         }
         

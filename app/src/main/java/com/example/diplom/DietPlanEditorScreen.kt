@@ -28,6 +28,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
 import com.example.diplom.data.*
 import com.example.diplom.ui.theme.InterFontFamily
 import com.example.diplom.ui.theme.UmamiOrange
@@ -38,6 +40,7 @@ import kotlinx.coroutines.launch
 fun DietPlanEditorScreen(
     navController: NavController,
     planId: String? = null,
+    currentUserId: String? = null,
     viewModel: DietViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
     val context = LocalContext.current
@@ -85,6 +88,7 @@ fun DietPlanEditorScreen(
 
     if (showRecipeSearchDialog) {
         RecipeSearchAndSelectDialog(
+            currentUserId = currentUserId,
             onDismiss = { showRecipeSearchDialog = false },
             onSelect = { recipe, mealOrder ->
                 compiledRecipes.add(
@@ -328,18 +332,40 @@ fun DietPlanEditorScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecipeSearchAndSelectDialog(
+    currentUserId: String? = null,
     onDismiss: () -> Unit,
     onSelect: (Recipe, Int) -> Unit
 ) {
     val scope = rememberCoroutineScope()
     var query by remember { mutableStateOf("") }
+    var selectedFilter by remember { mutableStateOf(0) } // 0: Все, 1: Мои, 2: Избранное
     var searchResults by remember { mutableStateOf<List<Recipe>>(emptyList()) }
     var selectedRecipe by remember { mutableStateOf<Recipe?>(null) }
     var selectedMealOrder by remember { mutableStateOf(1) } // Default: breakfast
 
-    LaunchedEffect(query) {
+    LaunchedEffect(query, selectedFilter) {
         try {
-            searchResults = ApiClient.recipeService.getRecipes(search = query.ifBlank { null }).take(5)
+            val rawRecipes = when (selectedFilter) {
+                0 -> ApiClient.recipeService.getRecipes(search = query.ifBlank { null })
+                1 -> {
+                    if (!currentUserId.isNullOrBlank()) {
+                        ApiClient.recipeService.getRecipes(userId = currentUserId, search = query.ifBlank { null })
+                    } else {
+                        emptyList()
+                    }
+                }
+                2 -> {
+                    val favorites = ApiClient.userService.getFavorites()
+                    val favRecipes = favorites.mapNotNull { it.recipe }
+                    if (query.isNotBlank()) {
+                        favRecipes.filter { it.title.contains(query, ignoreCase = true) }
+                    } else {
+                        favRecipes
+                    }
+                }
+                else -> emptyList()
+            }
+            searchResults = rawRecipes
         } catch (_: Exception) {}
     }
 
@@ -372,27 +398,133 @@ fun RecipeSearchAndSelectDialog(
                         shape = RoundedCornerShape(16.dp)
                     )
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
-                    LazyColumn(
-                        modifier = Modifier.height(180.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    // Premium Filter Chips
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
                     ) {
-                        items(searchResults) { recipe ->
-                            Row(
+                        val filters = listOf(
+                            0 to "Все",
+                            1 to "Мои",
+                            2 to "Избранное"
+                        )
+                        filters.forEach { (filterId, label) ->
+                            val isSelected = selectedFilter == filterId
+                            Surface(
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .clickable { selectedRecipe = recipe }
-                                    .padding(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                    .clip(RoundedCornerShape(20.dp))
+                                    .clickable { selectedFilter = filterId },
+                                color = if (isSelected) UmamiOrange else Color(0xFFF5F5F5),
+                                contentColor = if (isSelected) Color.White else Color.DarkGray
                             ) {
                                 Text(
-                                    text = recipe.title,
+                                    text = label,
                                     fontFamily = InterFontFamily,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp
+                                    fontSize = 12.sp,
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
                                 )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    if (searchResults.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(150.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Рецепты не найдены",
+                                fontFamily = InterFontFamily,
+                                color = Color.Gray,
+                                fontSize = 14.sp
+                            )
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.height(280.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            items(searchResults, key = { it.id }) { recipe ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .background(Color(0xFFFAFAFA))
+                                        .clickable { selectedRecipe = recipe }
+                                        .padding(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    // Thumbnail Preview
+                                    val imageToShow = recipe.imageUrl
+                                    if (!imageToShow.isNullOrEmpty()) {
+                                        AsyncImage(
+                                            model = normalizeImageUrl(imageToShow),
+                                            contentDescription = recipe.title,
+                                            modifier = Modifier
+                                                .size(50.dp)
+                                                .clip(RoundedCornerShape(10.dp))
+                                                .background(Color.LightGray),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                    } else {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(50.dp)
+                                                .clip(RoundedCornerShape(10.dp))
+                                                .background(UmamiOrange.copy(alpha = 0.1f)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text("🍴", fontSize = 20.sp)
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.width(12.dp))
+
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = recipe.title,
+                                            fontFamily = InterFontFamily,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 14.sp,
+                                            color = Color.Black,
+                                            maxLines = 1,
+                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                        )
+
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                            modifier = Modifier.padding(top = 2.dp)
+                                        ) {
+                                            if (recipe.cookingTime != null) {
+                                                Text(
+                                                    text = "⏱ ${recipe.cookingTime} мин",
+                                                    fontFamily = InterFontFamily,
+                                                    fontSize = 11.sp,
+                                                    color = Color.Gray
+                                                )
+                                            }
+                                            val authorName = recipe.User?.name ?: recipe.User?.username
+                                            if (!authorName.isNullOrBlank()) {
+                                                Text(
+                                                    text = "👤 $authorName",
+                                                    fontFamily = InterFontFamily,
+                                                    fontSize = 11.sp,
+                                                    color = Color.Gray,
+                                                    maxLines = 1,
+                                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
