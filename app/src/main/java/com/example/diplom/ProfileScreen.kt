@@ -66,6 +66,7 @@ fun UmamiProfileScreen(
     // Verification
     var showVerificationDialog by remember { mutableStateOf(false) }
     var showAppealDialog by remember { mutableStateOf(false) }
+    var showDeleteAccountDialog by remember { mutableStateOf(false) }
 
     // Avatar upload
     var currentAvatarUrl by remember(user?.avatarUrl) { mutableStateOf(user?.avatarUrl) }
@@ -475,10 +476,7 @@ fun UmamiProfileScreen(
                     }
                     HorizontalDivider(color = Color(0xFFF5F5F5), modifier = Modifier.padding(horizontal = 20.dp))
 
-                    ProfileMenuItem("Планы питания", Icons.Default.CalendarMonth) {
-                        if (!isLoggedIn) onLoginClick() else navController.navigate(Routes.DIET_PLANS)
-                    }
-                    HorizontalDivider(color = Color(0xFFF5F5F5), modifier = Modifier.padding(horizontal = 20.dp))
+
 
                     ProfileMenuItem("ИИ Шеф", Icons.Default.Chat) {
                         if (!isLoggedIn) onLoginClick() else navController.navigate(Routes.CHAT)
@@ -493,6 +491,13 @@ fun UmamiProfileScreen(
                         HorizontalDivider(color = Color(0xFFF5F5F5), modifier = Modifier.padding(horizontal = 20.dp))
                         ProfileMenuItem("Подтвердить аккаунт", Icons.Default.Verified) {
                             showVerificationDialog = true
+                        }
+                    }
+
+                    if (isLoggedIn) {
+                        HorizontalDivider(color = Color(0xFFF5F5F5), modifier = Modifier.padding(horizontal = 20.dp))
+                        ProfileMenuItem("Удалить аккаунт", Icons.Default.Delete) {
+                            showDeleteAccountDialog = true
                         }
                     }
                 }
@@ -619,6 +624,34 @@ fun UmamiProfileScreen(
                     }
                 }
                 showAppealDialog = false
+            }
+        )
+    }
+
+    if (showDeleteAccountDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteAccountDialog = false },
+            title = { Text("Удалить аккаунт?", fontFamily = InterFontFamily, fontWeight = FontWeight.Bold) },
+            text = { Text("Вы уверены, что хотите удалить свой аккаунт? Это действие необратимо и сотрет все ваши рецепты и данные.", fontFamily = InterFontFamily) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteAccountDialog = false
+                    authViewModel?.deleteAccount(
+                        onSuccess = {
+                            android.widget.Toast.makeText(context, "Аккаунт успешно удален", android.widget.Toast.LENGTH_LONG).show()
+                        },
+                        onError = { error ->
+                            android.widget.Toast.makeText(context, "Ошибка удаления: $error", android.widget.Toast.LENGTH_LONG).show()
+                        }
+                    )
+                }) {
+                    Text("Удалить", color = Color.Red, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteAccountDialog = false }) {
+                    Text("Отмена")
+                }
             }
         )
     }
@@ -809,6 +842,7 @@ fun MyRecipeCard(recipe: Recipe, navController: NavController) {
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp,
                         maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false)
                     )
                     if (recipe.isPrivate == true) {
@@ -839,7 +873,8 @@ fun MyRecipeCard(recipe: Recipe, navController: NavController) {
                         fontFamily = InterFontFamily,
                         color = Color.Gray,
                         fontSize = 12.sp,
-                        maxLines = 1
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
                 }
                 Spacer(modifier = Modifier.height(4.dp))

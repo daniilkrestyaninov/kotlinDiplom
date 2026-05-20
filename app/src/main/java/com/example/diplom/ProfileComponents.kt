@@ -279,7 +279,9 @@ fun RecipePostCard(
                 recipe.description ?: "Нет описания",
                 fontSize = 14.sp,
                 color = Color.Gray,
-                fontFamily = InterFontFamily
+                fontFamily = InterFontFamily,
+                maxLines = 3,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
 
             Spacer(modifier = Modifier.height(16.dp))

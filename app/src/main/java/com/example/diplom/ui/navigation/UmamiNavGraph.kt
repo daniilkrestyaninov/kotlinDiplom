@@ -35,9 +35,7 @@ import androidx.compose.runtime.*
 import com.example.diplom.AdminPanelScreen
 import com.example.diplom.VerificationScreen
 import com.example.diplom.AdminMetadataScreen
-import com.example.diplom.DietPlansScreen
-import com.example.diplom.DietPlanDetailScreen
-import com.example.diplom.DietPlanEditorScreen
+import com.example.diplom.AdminRecipesScreen
 
 object Routes {
     const val MAIN = "main"
@@ -58,9 +56,7 @@ object Routes {
     const val ADMIN_APPEALS = "admin_appeals"
     const val ADMIN_METADATA = "admin_metadata"
     const val ADMIN_MENU = "admin_menu"
-    const val DIET_PLANS = "diet_plans"
-    const val DIET_PLAN_DETAIL = "diet_plan_detail/{planId}"
-    const val DIET_PLAN_EDITOR = "diet_plan_editor?planId={planId}"
+    const val ADMIN_RECIPES = "admin_recipes"
     
     fun recipeDetail(recipeId: String, tab: String = "") = "recipe_detail/$recipeId?tab=$tab"
     fun userDetail(userId: String) = "user_detail/$userId"
@@ -226,6 +222,9 @@ fun UmamiApp(tokenManager: TokenManager) {
             composable(Routes.ADMIN_USERS) {
                 com.example.diplom.AdminUsersScreen(navController = navController)
             }
+            composable(Routes.ADMIN_RECIPES) {
+                AdminRecipesScreen(navController = navController)
+            }
             composable(Routes.ADMIN_REPORTS) {
                 com.example.diplom.AdminReportsScreen(navController = navController)
             }
@@ -240,21 +239,6 @@ fun UmamiApp(tokenManager: TokenManager) {
             }
             composable(Routes.ADMIN_MENU) {
                 com.example.diplom.AdminMenuScreen(navController = navController)
-            }
-            composable(Routes.DIET_PLANS) {
-                if (!isLoggedIn) {
-                    com.example.diplom.LoginRequiredScreen(onLoginClick = { showAuthModal = true })
-                } else {
-                    DietPlansScreen(navController = navController, currentUserId = currentUserId?.toString())
-                }
-            }
-            composable(Routes.DIET_PLAN_DETAIL, arguments = listOf(navArgument("planId") { type = NavType.StringType })) { backStackEntry ->
-                val planId = backStackEntry.arguments?.getString("planId") ?: ""
-                DietPlanDetailScreen(navController = navController, planId = planId, currentUserId = currentUserId?.toString())
-            }
-            composable(Routes.DIET_PLAN_EDITOR, arguments = listOf(navArgument("planId") { type = NavType.StringType; nullable = true; defaultValue = null })) { backStackEntry ->
-                val planId = backStackEntry.arguments?.getString("planId")
-                DietPlanEditorScreen(navController = navController, planId = planId, currentUserId = currentUserId?.toString())
             }
         }
         

@@ -2,6 +2,8 @@ package com.example.diplom
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -37,6 +39,9 @@ fun AdminUsersScreen(navController: NavController, viewModel: AdminViewModel = v
     var selectedUser by remember { mutableStateOf<User?>(null) }
     var showEditDialog by remember { mutableStateOf(false) }
 
+    var isMultiSelectMode by remember { mutableStateOf(false) }
+    val selectedUserIds = remember { mutableStateListOf<String>() }
+
     LaunchedEffect(Unit) {
         viewModel.loadUsers()
     }
@@ -44,10 +49,47 @@ fun AdminUsersScreen(navController: NavController, viewModel: AdminViewModel = v
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Пользователи", fontFamily = InterFontFamily, fontWeight = FontWeight.Bold) },
+                title = {
+                    if (isMultiSelectMode) {
+                        Text("Выбрано: ${selectedUserIds.size}", fontFamily = InterFontFamily, fontWeight = FontWeight.Bold)
+                    } else {
+                        Text("Пользователи", fontFamily = InterFontFamily, fontWeight = FontWeight.Bold)
+                    }
+                },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
+                    if (isMultiSelectMode) {
+                        IconButton(onClick = {
+                            isMultiSelectMode = false
+                            selectedUserIds.clear()
+                        }) {
+                            Icon(Icons.Default.Close, contentDescription = "Отмена")
+                        }
+                    } else {
+                        IconButton(onClick = { navController.popBackStack() }) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
+                        }
+                    }
+                },
+                actions = {
+                    if (isMultiSelectMode) {
+                        if (selectedUserIds.isNotEmpty()) {
+                            IconButton(onClick = {
+                                viewModel.bulkBlockUsers(selectedUserIds.toList()) { success ->
+                                    if (success) {
+                                        isMultiSelectMode = false
+                                        selectedUserIds.clear()
+                                    }
+                                }
+                            }) {
+                                Icon(Icons.Default.Block, contentDescription = "Заблокировать выбранных", tint = Color.Red)
+                            }
+                        }
+                    } else {
+                        IconButton(onClick = {
+                            isMultiSelectMode = true
+                        }) {
+                            Icon(Icons.Default.SelectAll, contentDescription = "Выбор нескольких")
+                        }
                     }
                 }
             )
@@ -78,10 +120,30 @@ fun AdminUsersScreen(navController: NavController, viewModel: AdminViewModel = v
                     
                     LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp)) {
                         items(filteredUsers) { user ->
-                            AdminUserItem(user = user) {
-                                selectedUser = user
-                                showEditDialog = true
-                            }
+                            val isSelected = selectedUserIds.contains(user.id)
+                            AdminUserItem(
+                                user = user,
+                                isSelected = isSelected,
+                                isMultiSelect = isMultiSelectMode,
+                                onClick = {
+                                    if (isMultiSelectMode) {
+                                        if (isSelected) {
+                                            selectedUserIds.remove(user.id)
+                                        } else {
+                                            selectedUserIds.add(user.id)
+                                        }
+                                    } else {
+                                        selectedUser = user
+                                        showEditDialog = true
+                                    }
+                                },
+                                onLongClick = {
+                                    if (!isMultiSelectMode) {
+                                        isMultiSelectMode = true
+                                        selectedUserIds.add(user.id)
+                                    }
+                                }
+                            )
                             Spacer(modifier = Modifier.height(12.dp))
                         }
                     }
@@ -116,17 +178,40 @@ fun AdminUsersScreen(navController: NavController, viewModel: AdminViewModel = v
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun AdminUserItem(user: User, onClick: () -> Unit) {
+fun AdminUserItem(
+    user: User,
+    isSelected: Boolean,
+    isMultiSelect: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
+) {
     ElevatedCard(
-        modifier = Modifier.fillMaxWidth().clickable { onClick() },
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            ),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.elevatedCardColors(containerColor = Color.White)
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = if (isSelected) UmamiOrange.copy(alpha = 0.1f) else Color.White
+        )
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            if (isMultiSelect) {
+                Checkbox(
+                    checked = isSelected,
+                    onCheckedChange = { onClick() },
+                    modifier = Modifier.padding(end = 8.dp),
+                    colors = CheckboxDefaults.colors(checkedColor = UmamiOrange)
+                )
+            }
             Box(modifier = Modifier.size(50.dp).clip(CircleShape).background(Color(0xFFF5F5F5))) {
                 if (user.avatarUrl != null) {
                     AsyncImage(
@@ -141,8 +226,21 @@ fun AdminUserItem(user: User, onClick: () -> Unit) {
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(user.username, fontWeight = FontWeight.Bold, fontFamily = InterFontFamily)
-                Text(user.name ?: "Без имени", color = Color.Gray, fontSize = 14.sp, fontFamily = InterFontFamily)
+                Text(
+                    user.username,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = InterFontFamily,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
+                Text(
+                    user.name ?: "Без имени",
+                    color = Color.Gray,
+                    fontSize = 14.sp,
+                    fontFamily = InterFontFamily,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
             }
             Surface(
                 color = when (user.role?.lowercase()) {

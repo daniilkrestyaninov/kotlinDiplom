@@ -16,6 +16,59 @@ sealed class AdminState<out T> {
 
 class AdminViewModel(private val service: AdminService = ApiClient.adminService) : ViewModel() {
 
+    private val _stats = MutableStateFlow<AdminState<Map<String, Any>>>(AdminState.Idle)
+    val stats = _stats.asStateFlow()
+
+    private val _analytics = MutableStateFlow<AdminState<Map<String, Any>>>(AdminState.Idle)
+    val analytics = _analytics.asStateFlow()
+
+    fun loadStats() {
+        viewModelScope.launch {
+            _stats.value = AdminState.Loading
+            try {
+                _stats.value = AdminState.Success(service.getStats())
+            } catch (e: Exception) {
+                _stats.value = AdminState.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+
+    fun loadAnalytics() {
+        viewModelScope.launch {
+            _analytics.value = AdminState.Loading
+            try {
+                _analytics.value = AdminState.Success(service.getAnalytics())
+            } catch (e: Exception) {
+                _analytics.value = AdminState.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+
+    fun bulkBlockUsers(userIds: List<String>, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                service.bulkBlockUsers(mapOf("userIds" to userIds))
+                loadUsers() // Refresh
+                onComplete(true)
+            } catch (e: Exception) {
+                android.util.Log.e("AdminVM", "Bulk block failed", e)
+                onComplete(false)
+            }
+        }
+    }
+
+    fun bulkDeleteRecipes(recipeIds: List<String>, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                service.bulkDeleteRecipes(mapOf("recipeIds" to recipeIds))
+                onComplete(true)
+            } catch (e: Exception) {
+                android.util.Log.e("AdminVM", "Bulk delete failed", e)
+                onComplete(false)
+            }
+        }
+    }
+
     private val _verifications = MutableStateFlow<AdminState<List<VerificationRequest>>>(AdminState.Idle)
     val verifications = _verifications.asStateFlow()
 
@@ -33,10 +86,14 @@ class AdminViewModel(private val service: AdminService = ApiClient.adminService)
         }
     }
 
-    fun updateVerificationStatus(id: Long, status: String) {
+    fun updateVerificationStatus(id: Long, status: String, adminNotes: String? = null) {
         viewModelScope.launch {
             try {
-                service.updateVerification(id, mapOf("status" to status))
+                val body = mutableMapOf("status" to status)
+                if (!adminNotes.isNullOrBlank()) {
+                    body["admin_notes"] = adminNotes
+                }
+                service.updateVerification(id, body)
                 loadVerifications() // Refresh list
             } catch (e: Exception) {
                 android.util.Log.e("AdminVM", "Failed to update status", e)

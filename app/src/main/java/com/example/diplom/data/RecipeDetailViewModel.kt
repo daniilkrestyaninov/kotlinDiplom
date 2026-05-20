@@ -236,4 +236,29 @@ class RecipeDetailViewModel : ViewModel() {
             }
         }
     }
+
+    fun exportIngredients(recipeId: String, onExported: (String) -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val responseBody = recipeService.exportIngredients(recipeId)
+                val text = responseBody.string()
+                onExported(text)
+            } catch (e: Exception) {
+                android.util.Log.e("RecipeDetailViewModel", "Export failed", e)
+                onError(e.localizedMessage ?: "Не удалось экспортировать ингредиенты")
+            }
+        }
+    }
+
+    fun loadRecipeLikes(recipeId: String, onLoaded: (List<UserBrief>) -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val likes = recipeService.getRecipeLikes(recipeId)
+                onLoaded(likes)
+            } catch (e: Exception) {
+                android.util.Log.e("RecipeDetailViewModel", "Load likes failed", e)
+                onError(e.localizedMessage ?: "Не удалось загрузить список оценивших")
+            }
+        }
+    }
 }

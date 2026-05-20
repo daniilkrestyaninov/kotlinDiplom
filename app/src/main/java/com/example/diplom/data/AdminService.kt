@@ -17,7 +17,7 @@ data class AuditLog(
     val entity: String?,
     val entity_id: Long?,
     val details: Any?,
-    val created_at: String?
+    @SerializedName("createdAt") val created_at: String?
 )
 
 data class VerificationRequest(
@@ -80,6 +80,12 @@ interface AdminService {
 
     @POST("admin/users/{id}/unblock")
     suspend fun unblockUser(@Path("id") id: String)
+
+    @POST("admin/users/bulk-block")
+    suspend fun bulkBlockUsers(@Body body: Map<String, @JvmSuppressWildcards List<String>>)
+
+    @POST("admin/recipes/bulk-delete")
+    suspend fun bulkDeleteRecipes(@Body body: Map<String, @JvmSuppressWildcards List<String>>)
 
     @GET("admin/appeals")
     suspend fun getAppeals(): List<AppealItem>
@@ -185,7 +191,7 @@ data class ReportItem(
     val reason: String,
     val description: String?,
     val status: String,
-    val created_at: String,
+    @SerializedName("createdAt") val created_at: String?,
     @SerializedName("Reporter") val Reporter: UserBrief?,
     @SerializedName("ReportedUser") val ReportedUser: UserBrief?,
     @SerializedName("ReportedRecipe") val ReportedRecipe: RecipeBrief?
@@ -202,6 +208,6 @@ data class AppealItem(
     val message: String,
     val status: String,
     val admin_notes: String?,
-    val created_at: String,
+    @SerializedName("createdAt") val created_at: String?,
     val User: UserBrief? = null
 )

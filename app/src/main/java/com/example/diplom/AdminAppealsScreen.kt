@@ -119,7 +119,10 @@ fun AppealItemCard(appeal: AppealItem, onClick: () -> Unit) {
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(appeal.User?.username ?: "Anonymous", fontWeight = FontWeight.Bold, fontFamily = InterFontFamily)
-                    Text(appeal.created_at.take(10), color = Color.Gray, fontSize = 12.sp, fontFamily = InterFontFamily)
+                    val dateText = remember(appeal.created_at) {
+                        appeal.created_at?.take(10) ?: "Неизвестно"
+                    }
+                    Text(dateText, color = Color.Gray, fontSize = 12.sp, fontFamily = InterFontFamily)
                 }
                 Spacer(modifier = Modifier.weight(1f))
                 Surface(

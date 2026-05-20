@@ -1,6 +1,7 @@
 package com.example.diplom
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -165,102 +166,197 @@ fun UmamiUserDetailScreen(
                 contentPadding = PaddingValues(16.dp)
             ) {
                 item {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(24.dp),
-                        color = Color.White,
-                        shadowElevation = 1.dp
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Box(modifier = Modifier.size(100.dp).clip(CircleShape).background(Color(0xFFF5F5F5))) {
-                                if (profileData?.avatarUrl != null) {
-                                    AsyncImage(
-                                        model = normalizeImageUrl(profileData?.avatarUrl),
-                                        contentDescription = null,
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                } else {
-                                    Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(60.dp).align(Alignment.Center), tint = Color.LightGray)
-                                }
-                            }
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                profileData?.name ?: profileData?.username ?: "Пользователь",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 22.sp,
-                                fontFamily = InterFontFamily,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+                shape = RoundedCornerShape(32.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    // 1. Cover Banner (Sunset Gradient)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(115.dp)
+                            .background(
+                                androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                    colors = listOf(UmamiOrange, Color(0xFFFF9E80))
+                                )
                             )
-                            if (profileData?.bio != null) {
-                                Spacer(modifier = Modifier.height(8.dp))
+                    )
+
+                    // 2. Overlapping Circular Avatar
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.CenterHorizontally)
+                            .offset(y = (-45).dp) // Half overlap
+                            .size(96.dp)
+                            .border(4.dp, Color.White, CircleShape)
+                            .clip(CircleShape)
+                            .background(Color.White),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (profileData?.avatarUrl != null) {
+                            AsyncImage(
+                                model = normalizeImageUrl(profileData?.avatarUrl),
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Icon(
+                                Icons.Default.Person,
+                                contentDescription = null,
+                                tint = UmamiOrange,
+                                modifier = Modifier.size(48.dp)
+                            )
+                        }
+                    }
+
+                    // 3. User Info & Stats
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .offset(y = (-30).dp)
+                            .padding(horizontal = 24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        // Display Name
+                        Text(
+                            text = profileData?.name ?: profileData?.username ?: "Пользователь",
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.Black,
+                            fontSize = 24.sp,
+                            fontFamily = InterFontFamily,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        
+                        // @username
+                        Text(
+                            text = "@${profileData?.username ?: "username"}",
+                            color = Color.Gray,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 14.sp,
+                            fontFamily = InterFontFamily
+                        )
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        // 4. Premium Stat Columns (Recipes, Followers, Following)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color(0xFFF9F9F9), RoundedCornerShape(20.dp))
+                                .padding(vertical = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            ProfileStat(count = profileData?.stats?.recipesCount ?: 0, label = "Рецепты")
+                            Box(modifier = Modifier.width(1.dp).height(24.dp).background(Color(0xFFE5E5E5)))
+                            ProfileStat(count = profileData?.stats?.followingCount ?: 0, label = "Подписки")
+                            Box(modifier = Modifier.width(1.dp).height(24.dp).background(Color(0xFFE5E5E5)))
+                            ProfileStat(count = profileData?.stats?.followersCount ?: 0, label = "Подписчики")
+                        }
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        // 5. Follow / Edit Button
+                        if (userId == currentUserId) {
+                            Button(
+                                onClick = { /* Navigate to Edit Profile */ },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF5F5F5)),
+                                shape = RoundedCornerShape(16.dp),
+                                modifier = Modifier.fillMaxWidth().height(48.dp)
+                            ) {
                                 Text(
-                                    profileData?.bio!!,
-                                    fontSize = 14.sp,
-                                    color = Color.Gray,
+                                    "Редактировать профиль",
+                                    color = Color.Black,
+                                    fontWeight = FontWeight.Bold,
                                     fontFamily = InterFontFamily,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier.padding(horizontal = 16.dp)
+                                    fontSize = 15.sp
                                 )
                             }
-                            Spacer(modifier = Modifier.height(20.dp))
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                                ProfileStat(count = profileData?.stats?.recipesCount ?: 0, label = "Рецепты")
-                                ProfileStat(count = profileData?.stats?.followingCount ?: 0, label = "Подписки")
-                                ProfileStat(count = profileData?.stats?.followersCount ?: 0, label = "Подписчики")
-                            }
-                            
-                            Spacer(modifier = Modifier.height(24.dp))
-                            
-                            if (userId == currentUserId) {
-                                Button(
-                                    onClick = { /* Navigate to Edit Profile */ },
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF5F5F5)),
-                                    shape = RoundedCornerShape(12.dp),
-                                    modifier = Modifier.fillMaxWidth().height(44.dp)
-                                ) {
-                                    Text("Редактировать профиль", color = Color.Black, fontWeight = FontWeight.SemiBold, fontFamily = InterFontFamily)
-                                }
-                            } else if (currentUserId != null) {
-                                Button(
-                                    onClick = {
-                                        if (isBlocked) {
-                                            android.widget.Toast.makeText(context, "Действие недоступно: аккаунт заблокирован", android.widget.Toast.LENGTH_SHORT).show()
-                                        } else {
-                                            scope.launch {
-                                                try {
-                                                    if (isFollowing) userService.unfollow(userId)
-                                                    else userService.follow(userId)
-                                                    isFollowing = !isFollowing
-                                                    userRecipes = userRecipes.map { recipe ->
-                                                        recipe.copy(User = recipe.User?.copy(isFollowing = isFollowing))
-                                                    }
-                                                    // Refresh stats
-                                                    profileData = userService.getUserProfile(userId)
-                                                } catch (e: Exception) {}
-                                            }
+                        } else if (currentUserId != null) {
+                            Button(
+                                onClick = {
+                                    if (isBlocked) {
+                                        android.widget.Toast.makeText(context, "Действие недоступно: аккаунт заблокирован", android.widget.Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        scope.launch {
+                                            try {
+                                                if (isFollowing) userService.unfollow(userId)
+                                                else userService.follow(userId)
+                                                isFollowing = !isFollowing
+                                                userRecipes = userRecipes.map { recipe ->
+                                                    recipe.copy(User = recipe.User?.copy(isFollowing = isFollowing))
+                                                }
+                                                // Refresh stats
+                                                profileData = userService.getUserProfile(userId)
+                                            } catch (e: Exception) {}
                                         }
-                                    },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = if (isFollowing) Color(0xFFF5F5F5) else UmamiGreen
-                                    ),
-                                    shape = RoundedCornerShape(12.dp),
-                                    modifier = Modifier.fillMaxWidth().height(44.dp)
-                                ) {
-                                    Text(
-                                        if (isFollowing) "Отписаться" else "Подписаться",
-                                        color = if (isFollowing) Color.Black else Color.White,
-                                        fontWeight = FontWeight.Bold,
-                                        fontFamily = InterFontFamily
-                                    )
-                                }
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (isFollowing) Color(0xFFF5F5F5) else UmamiOrange
+                                ),
+                                shape = RoundedCornerShape(16.dp),
+                                modifier = Modifier.fillMaxWidth().height(48.dp)
+                            ) {
+                                Text(
+                                    if (isFollowing) "Отписаться" else "Подписаться",
+                                    color = if (isFollowing) Color.Black else Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp,
+                                    fontFamily = InterFontFamily
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        // 6. Bio Container with Quote style
+                        val bioText = if (!profileData?.bio.isNullOrBlank()) {
+                            profileData!!.bio!!
+                        } else {
+                            "Ты не ты когда ты... голоден! 🍫"
+                        }
+
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = Color(0xFFFFF8F6),
+                            shape = RoundedCornerShape(18.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, UmamiOrange.copy(alpha = 0.15f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Favorite,
+                                    contentDescription = null,
+                                    tint = UmamiOrange.copy(alpha = 0.5f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = bioText,
+                                    color = Color.DarkGray,
+                                    fontSize = 14.sp,
+                                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                                    fontFamily = InterFontFamily,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.weight(1f)
+                                )
                             }
                         }
                     }
+                }
+            }
                 }
 
                 if (friends.isNotEmpty()) {

@@ -81,4 +81,7 @@ interface UserService {
 
     @POST("users/me/appeal")
     suspend fun createAppeal(@Body body: Map<String, String>): Map<String, Any>
+
+    @DELETE("users/me")
+    suspend fun deleteMyProfile(): Map<String, Any>
 }

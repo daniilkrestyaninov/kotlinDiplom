@@ -85,6 +85,12 @@ interface RecipeService {
         @Part image: MultipartBody.Part,
         @Part("folder") folder: RequestBody
     ): UploadResponse
+
+    @GET("recipes/{id}/export")
+    suspend fun exportIngredients(@Path("id") id: String): okhttp3.ResponseBody
+
+    @GET("recipes/{id}/likes")
+    suspend fun getRecipeLikes(@Path("id") id: String): List<UserBrief>
 }
 
 data class CookedResponse(

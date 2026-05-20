@@ -124,6 +124,20 @@ class AuthViewModel(private val tokenManager: TokenManager) : ViewModel() {
         }
     }
 
+    fun deleteAccount(onSuccess: () -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                userService.deleteMyProfile()
+                tokenManager.deleteToken()
+                _state.value = AuthState.Idle
+                onSuccess()
+            } catch (e: Exception) {
+                android.util.Log.e("AuthViewModel", "Account deletion failed", e)
+                onError(e.localizedMessage ?: "Неизвестная ошибка")
+            }
+        }
+    }
+
     companion object {
         fun provideFactory(tokenManager: TokenManager): androidx.lifecycle.ViewModelProvider.Factory =
             object : androidx.lifecycle.ViewModelProvider.Factory {

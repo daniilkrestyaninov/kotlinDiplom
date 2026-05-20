@@ -204,7 +204,14 @@ fun FavoriteRecipeCard(recipe: Recipe, navController: NavController, onRemove: (
                         Text("${recipe.cookingTime} мин", fontSize = 12.sp, color = UmamiOrange, fontFamily = InterFontFamily, fontWeight = FontWeight.Medium)
                     }
                     if (recipe.User != null) {
-                        Text(" · ${recipe.User.username}", fontSize = 12.sp, color = Color.Gray, fontFamily = InterFontFamily)
+                        Text(
+                            text = " · ${recipe.User.username}",
+                            fontSize = 12.sp,
+                            color = Color.Gray,
+                            fontFamily = InterFontFamily,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                        )
                     }
                 }
             }

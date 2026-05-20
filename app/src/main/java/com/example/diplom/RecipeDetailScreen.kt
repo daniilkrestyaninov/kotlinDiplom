@@ -2,9 +2,12 @@ package com.example.diplom
 
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -560,22 +563,117 @@ fun UmamiRecipeDetailScreen(
                                         Text("Войдите, чтобы писать комментарии", color = Color.Gray, fontFamily = InterFontFamily)
                                     } else {
                                         var newComment by remember { mutableStateOf("") }
-                                        var rating by remember { mutableIntStateOf(5) }
-                                        var sweet by remember { mutableIntStateOf(3) }
-                                        var sour by remember { mutableIntStateOf(3) }
-                                        var salty by remember { mutableIntStateOf(3) }
-                                        var spicy by remember { mutableIntStateOf(3) }
-                                        var umami by remember { mutableIntStateOf(3) }
+                                        var rating by remember { mutableIntStateOf(0) }
+                                        var sweet by remember { mutableIntStateOf(0) }
+                                        var sour by remember { mutableIntStateOf(0) }
+                                        var salty by remember { mutableIntStateOf(0) }
+                                        var spicy by remember { mutableIntStateOf(0) }
+                                        var umami by remember { mutableIntStateOf(0) }
 
-                                        Text("Рейтинг: $rating/5", fontFamily = InterFontFamily)
-                                        Slider(value = rating.toFloat(), onValueChange = { rating = it.toInt().coerceIn(1, 5) }, valueRange = 1f..5f, steps = 3)
-                                        Text("Сладкий: $sweet  Кислый: $sour  Соленый: $salty", fontSize = 12.sp, color = Color.Gray)
-                                        Slider(value = sweet.toFloat(), onValueChange = { sweet = it.toInt().coerceIn(1, 5) }, valueRange = 1f..5f, steps = 3)
-                                        Slider(value = sour.toFloat(), onValueChange = { sour = it.toInt().coerceIn(1, 5) }, valueRange = 1f..5f, steps = 3)
-                                        Slider(value = salty.toFloat(), onValueChange = { salty = it.toInt().coerceIn(1, 5) }, valueRange = 1f..5f, steps = 3)
-                                        Text("Острый: $spicy  Умами: $umami", fontSize = 12.sp, color = Color.Gray)
-                                        Slider(value = spicy.toFloat(), onValueChange = { spicy = it.toInt().coerceIn(1, 5) }, valueRange = 1f..5f, steps = 3)
-                                        Slider(value = umami.toFloat(), onValueChange = { umami = it.toInt().coerceIn(1, 5) }, valueRange = 1f..5f, steps = 3)
+                                        if (replyingTo == null) {
+                                            Card(
+                                                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                                colors = CardDefaults.cardColors(containerColor = Color(0xFFFAFAFA)),
+                                                shape = RoundedCornerShape(16.dp),
+                                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEEEEEE))
+                                            ) {
+                                                Column(
+                                                    modifier = Modifier.padding(16.dp),
+                                                    horizontalAlignment = Alignment.CenterHorizontally
+                                                ) {
+                                                    Text(
+                                                        text = "Оцените рецепт",
+                                                        fontFamily = InterFontFamily,
+                                                        fontWeight = FontWeight.Bold,
+                                                        fontSize = 15.sp,
+                                                        color = Color(0xFF2D3748)
+                                                    )
+                                                    Spacer(modifier = Modifier.height(4.dp))
+                                                    Text(
+                                                        text = if (rating == 0) "Нажмите на звезду, чтобы поставить оценку (необязательно)" else "Ваша оценка: $rating из 5",
+                                                        fontFamily = InterFontFamily,
+                                                        fontSize = 12.sp,
+                                                        color = if (rating == 0) Color.Gray else UmamiOrange,
+                                                        fontWeight = if (rating == 0) FontWeight.Normal else FontWeight.Medium
+                                                    )
+                                                    Spacer(modifier = Modifier.height(12.dp))
+                                                    Row(
+                                                        horizontalArrangement = Arrangement.Center,
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        for (i in 1..5) {
+                                                            val isFilled = i <= rating
+                                                            Icon(
+                                                                imageVector = Icons.Default.Star,
+                                                                contentDescription = "Оценка $i",
+                                                                tint = if (isFilled) Color(0xFFFFB000) else Color(0xFFE2E8F0),
+                                                                modifier = Modifier
+                                                                    .size(36.dp)
+                                                                    .clickable {
+                                                                        rating = if (rating == i) 0 else i
+                                                                    }
+                                                                    .padding(horizontal = 2.dp)
+                                                            )
+                                                        }
+                                                    }
+                                                    if (rating > 0) {
+                                                        Spacer(modifier = Modifier.height(8.dp))
+                                                        TextButton(
+                                                            onClick = { rating = 0 },
+                                                            colors = ButtonDefaults.textButtonColors(contentColor = Color.Red.copy(alpha = 0.7f))
+                                                        ) {
+                                                            Text("Сбросить оценку", fontSize = 11.sp, fontFamily = InterFontFamily)
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                            Text(
+                                                text = "Вкусовой профиль (необязательно)",
+                                                fontFamily = InterFontFamily,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 14.sp,
+                                                color = Color(0xFF2D3748),
+                                                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                                            )
+
+                                            TasteRatingSelector(
+                                                emoji = "🍭",
+                                                label = "Сладкий",
+                                                value = sweet,
+                                                onValueChange = { sweet = it },
+                                                activeColor = Color(0xFFEC4899)
+                                            )
+                                            TasteRatingSelector(
+                                                emoji = "🍋",
+                                                label = "Кислый",
+                                                value = sour,
+                                                onValueChange = { sour = it },
+                                                activeColor = Color(0xFFEAB308)
+                                            )
+                                            TasteRatingSelector(
+                                                emoji = "🧂",
+                                                label = "Соленый",
+                                                value = salty,
+                                                onValueChange = { salty = it },
+                                                activeColor = Color(0xFF3B82F6)
+                                            )
+                                            TasteRatingSelector(
+                                                emoji = "🌶",
+                                                label = "Острый",
+                                                value = spicy,
+                                                onValueChange = { spicy = it },
+                                                activeColor = Color(0xFFEF4444)
+                                            )
+                                            TasteRatingSelector(
+                                                emoji = "🥩",
+                                                label = "Умами",
+                                                value = umami,
+                                                onValueChange = { umami = it },
+                                                activeColor = UmamiOrange
+                                            )
+                                            Spacer(modifier = Modifier.height(12.dp))
+                                        }
 
                                         if (replyingTo != null) {
                                             Surface(
@@ -614,15 +712,21 @@ fun UmamiRecipeDetailScreen(
                                                     } else if (newComment.isNotBlank()) {
                                                         viewModel.postComment(
                                                             recipeId, newComment, 
-                                                            if (replyingTo == null) rating else null, 
-                                                            if (replyingTo == null) sweet else null, 
-                                                            if (replyingTo == null) sour else null, 
-                                                            if (replyingTo == null) salty else null, 
-                                                            if (replyingTo == null) spicy else null, 
-                                                            if (replyingTo == null) umami else null,
+                                                            if (replyingTo == null && rating > 0) rating else null, 
+                                                            if (replyingTo == null && sweet > 0) sweet else null, 
+                                                            if (replyingTo == null && sour > 0) sour else null, 
+                                                            if (replyingTo == null && salty > 0) salty else null, 
+                                                            if (replyingTo == null && spicy > 0) spicy else null, 
+                                                            if (replyingTo == null && umami > 0) umami else null,
                                                             parentCommentId = replyingTo?.id
                                                         )
                                                         newComment = ""
+                                                        rating = 0
+                                                        sweet = 0
+                                                        sour = 0
+                                                        salty = 0
+                                                        spicy = 0
+                                                        umami = 0
                                                         replyingTo = null
                                                     }
                                                 }) {
@@ -659,13 +763,31 @@ fun CommentItem(
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        comment.author?.name ?: comment.author?.username ?: "Пользователь",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        fontFamily = InterFontFamily,
-                        modifier = Modifier.weight(1f)
-                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            comment.author?.name ?: comment.author?.username ?: "Пользователь",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            fontFamily = InterFontFamily
+                        )
+                        
+                        if (comment.rating != null && comment.rating > 0) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(top = 2.dp)
+                            ) {
+                                for (i in 1..5) {
+                                    val isFilled = i <= comment.rating
+                                    Icon(
+                                        imageVector = Icons.Default.Star,
+                                        contentDescription = null,
+                                        tint = if (isFilled) Color(0xFFFFB000) else Color(0xFFE2E8F0),
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
                     
                     // Like button
                     val cLiked = comment.isLiked ?: false
@@ -687,7 +809,39 @@ fun CommentItem(
                     }
                 }
                 
-                Text(comment.content, fontSize = 14.sp, fontFamily = InterFontFamily, modifier = Modifier.padding(top = 4.dp))
+                val hasTastes = (comment.tasteSweet ?: 0) > 0 ||
+                                (comment.tasteSour ?: 0) > 0 ||
+                                (comment.tasteSalty ?: 0) > 0 ||
+                                (comment.tasteSpicy ?: 0) > 0 ||
+                                (comment.tasteUmami ?: 0) > 0
+                                
+                if (hasTastes) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 6.dp)
+                            .horizontalScroll(rememberScrollState()),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if ((comment.tasteSweet ?: 0) > 0) {
+                            TasteBadge("🍭", "Сладкий", comment.tasteSweet!!, Color(0xFFEC4899))
+                        }
+                        if ((comment.tasteSour ?: 0) > 0) {
+                            TasteBadge("🍋", "Кислый", comment.tasteSour!!, Color(0xFFEAB308))
+                        }
+                        if ((comment.tasteSalty ?: 0) > 0) {
+                            TasteBadge("🧂", "Соленый", comment.tasteSalty!!, Color(0xFF3B82F6))
+                        }
+                        if ((comment.tasteSpicy ?: 0) > 0) {
+                            TasteBadge("🌶", "Острый", comment.tasteSpicy!!, Color(0xFFEF4444))
+                        }
+                        if ((comment.tasteUmami ?: 0) > 0) {
+                            TasteBadge("🥩", "Умами", comment.tasteUmami!!, UmamiOrange)
+                        }
+                    }
+                }
+                
+                Text(comment.content, fontSize = 14.sp, fontFamily = InterFontFamily, modifier = Modifier.padding(top = 6.dp))
                 
                 Row(modifier = Modifier.padding(top = 8.dp)) {
                     Text(
@@ -857,5 +1011,103 @@ fun LikesSection(likes: List<RecipeLike>, navController: NavController) {
                 // Можно открыть список пользователей
             }
         )
+    }
+}
+
+@Composable
+fun TasteBadge(emoji: String, label: String, value: Int, color: Color) {
+    Surface(
+        color = color.copy(alpha = 0.08f),
+        border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.25f)),
+        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.padding(end = 6.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(emoji, fontSize = 12.sp)
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = "$label: $value/5",
+                fontSize = 11.sp,
+                fontFamily = InterFontFamily,
+                fontWeight = FontWeight.Medium,
+                color = color
+            )
+        }
+    }
+}
+
+@Composable
+fun TasteRatingSelector(
+    emoji: String,
+    label: String,
+    value: Int,
+    onValueChange: (Int) -> Unit,
+    activeColor: Color
+) {
+    val levels = listOf("Слабый", "Умеренный", "Выраженный", "Интенсивный", "Экстремальный")
+    
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(emoji, fontSize = 20.sp)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = label,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp,
+                    fontFamily = InterFontFamily,
+                    color = Color(0xFF2D3748)
+                )
+            }
+            Text(
+                text = if (value == 0) "Не выбран" else "${levels[value - 1]} ($value/5)",
+                fontSize = 12.sp,
+                fontFamily = InterFontFamily,
+                fontWeight = FontWeight.Medium,
+                color = if (value == 0) Color.Gray else activeColor
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            for (i in 1..5) {
+                val isSelected = i == value
+                val bgColor = if (isSelected) activeColor.copy(alpha = 0.15f) else Color(0xFFF7FAFC)
+                val borderColor = if (isSelected) activeColor else Color(0xFFE2E8F0)
+                val textColor = if (isSelected) activeColor else Color(0xFF4A5568)
+                
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(38.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(bgColor)
+                        .clickable {
+                            onValueChange(if (value == i) 0 else i)
+                        }
+                        .border(1.dp, borderColor, RoundedCornerShape(10.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "$i",
+                        fontSize = 13.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                        color = textColor,
+                        fontFamily = InterFontFamily
+                    )
+                }
+            }
+        }
     }
 }

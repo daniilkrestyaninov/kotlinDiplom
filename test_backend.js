@@ -72,7 +72,6 @@ async function runTests() {
 
   testApp.use('/users', require('c:/istu/recipesDiplom/routes/userRoutes'));
   testApp.use('/reports', require('c:/istu/recipesDiplom/routes/reportRoutes'));
-  testApp.use('/diet-plans', require('c:/istu/recipesDiplom/routes/dietPlanRoutes'));
   testApp.use('/admin', require('c:/istu/recipesDiplom/routes/adminRoutes'));
   testApp.use('/recipes', require('c:/istu/recipesDiplom/routes/recipeRoutes'));
 
@@ -142,13 +141,6 @@ async function runTests() {
       });
       console.log(`Report submission as blocked user response: ${res.status} - ${JSON.stringify(res.data)}`);
       if (res.status !== 403 || !res.data.is_blocked) throw new Error('Expected 403 is_blocked on report submission');
-
-      // 4. Test that blocked user gets 403 on diet plan creation
-      res = await client.post('/diet-plans', { title: 'Diet Plan', description: 'Desc' }, {
-        headers: { Authorization: `Bearer ${userToken}` }
-      });
-      console.log(`Diet plan creation as blocked user response: ${res.status} - ${JSON.stringify(res.data)}`);
-      if (res.status !== 403 || !res.data.is_blocked) throw new Error('Expected 403 is_blocked on diet plan creation');
 
       console.log('\n--- 🧪 TEST 4: Appeal Workflow ---');
       // 1. Submit empty appeal

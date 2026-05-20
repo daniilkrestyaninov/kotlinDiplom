@@ -29,6 +29,10 @@ import com.example.diplom.ui.theme.UmamiOrange
 fun VerificationScreen(navController: NavController, viewModel: AdminViewModel = viewModel()) {
     val state by viewModel.verifications.collectAsState()
 
+    var selectedRequest by remember { mutableStateOf<VerificationRequest?>(null) }
+    var showDialog by remember { mutableStateOf(false) }
+    var isApproveAction by remember { mutableStateOf(true) }
+
     LaunchedEffect(Unit) {
         viewModel.loadVerifications()
     }
@@ -63,8 +67,16 @@ fun VerificationScreen(navController: NavController, viewModel: AdminViewModel =
                             items(pending) { request ->
                                 VerificationItem(
                                     request = request,
-                                    onAccept = { viewModel.updateVerificationStatus(request.id, "approved") },
-                                    onReject = { viewModel.updateVerificationStatus(request.id, "rejected") }
+                                    onAccept = {
+                                        selectedRequest = request
+                                        isApproveAction = true
+                                        showDialog = true
+                                    },
+                                    onReject = {
+                                        selectedRequest = request
+                                        isApproveAction = false
+                                        showDialog = true
+                                    }
                                 )
                             }
                         }
@@ -77,6 +89,19 @@ fun VerificationScreen(navController: NavController, viewModel: AdminViewModel =
             }
         }
     }
+
+    if (showDialog && selectedRequest != null) {
+        ReviewVerificationDialog(
+            request = selectedRequest!!,
+            isApprove = isApproveAction,
+            onDismiss = { showDialog = false },
+            onAction = { notes ->
+                val status = if (isApproveAction) "approved" else "rejected"
+                viewModel.updateVerificationStatus(selectedRequest!!.id, status, notes)
+                showDialog = false
+            }
+        )
+    }
 }
 
 @Composable
@@ -87,8 +112,22 @@ fun VerificationItem(request: VerificationRequest, onAccept: () -> Unit, onRejec
         colors = CardDefaults.elevatedCardColors(containerColor = Color.White)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("Пользователь: ${request.User?.username ?: "ID ${request.user_id}"}", fontWeight = FontWeight.Bold, fontSize = 16.sp, fontFamily = InterFontFamily)
-            Text("ФИО: ${request.full_name}", color = Color.DarkGray, fontSize = 14.sp, fontFamily = InterFontFamily)
+            Text(
+                "Пользователь: ${request.User?.username ?: "ID ${request.user_id}"}",
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                fontFamily = InterFontFamily,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
+            Text(
+                "ФИО: ${request.full_name}",
+                color = Color.DarkGray,
+                fontSize = 14.sp,
+                fontFamily = InterFontFamily,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
             if (!request.info.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text("Инфо: ${request.info}", fontSize = 13.sp, color = Color.Gray, fontFamily = InterFontFamily)
@@ -119,4 +158,72 @@ fun VerificationItem(request: VerificationRequest, onAccept: () -> Unit, onRejec
             }
         }
     }
+}
+
+@Composable
+fun ReviewVerificationDialog(
+    request: VerificationRequest,
+    isApprove: Boolean,
+    onDismiss: () -> Unit,
+    onAction: (adminNotes: String) -> Unit
+) {
+    var notes by remember { mutableStateOf("") }
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { 
+            Text(
+                text = if (isApprove) "Одобрение верификации" else "Отклонение верификации", 
+                fontFamily = InterFontFamily, 
+                fontWeight = FontWeight.Bold
+            ) 
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("ФИО заявителя: ${request.full_name}", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                if (!request.info.isNullOrBlank()) {
+                    Text("Информация от заявителя:", fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = Color.Gray)
+                    Surface(
+                        color = Color(0xFFF9F9F9),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(request.info, modifier = Modifier.padding(12.dp), fontSize = 13.sp, fontFamily = InterFontFamily)
+                    }
+                }
+                
+                OutlinedTextField(
+                    value = notes,
+                    onValueChange = { notes = it },
+                    label = { Text(if (isApprove) "Заметки администратора (необязательно)" else "Причина отклонения") },
+                    placeholder = { 
+                        Text(
+                            if (isApprove) "Например, проверен диплом шеф-повара" 
+                            else "Например, нечитаемый диплом или недостаточно опыта"
+                        ) 
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    minLines = 2
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onAction(notes) },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isApprove) Color(0xFF4CAF50) else Color(0xFFE57373)
+                ),
+                enabled = isApprove || notes.isNotBlank(),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text(if (isApprove) "Одобрить" else "Отклонить")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Отмена")
+            }
+        }
+    )
 }

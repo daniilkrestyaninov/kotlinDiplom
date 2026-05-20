@@ -56,10 +56,10 @@ fun AuthModal(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = if (verificationState != null) "ПОДТВЕРЖДЕНИЕ EMAIL" else if (isLogin) "АВТОРИЗАЦИЯ" else "РЕГИСТРАЦИЯ",
+                    text = if (verificationState != null) "Подтверждение почты" else if (isLogin) "Вход в профиль" else "Регистрация",
                     fontFamily = InterFontFamily,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 32.sp
+                    fontSize = 24.sp
                 )
 
                 Spacer(modifier = Modifier.height(20.dp))
@@ -181,22 +181,22 @@ fun AuthModal(
                     } else {
                         Text(
                             when {
-                                verificationState != null -> "Подтвердить email"
-                                isLogin -> "Авторизоваться"
-                                else -> "Зарегистрироваться"
+                                verificationState != null -> "Подтвердить"
+                                isLogin -> "Войти"
+                                else -> "Создать аккаунт"
                             },
                             fontFamily = InterFontFamily,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 20.sp
+                            fontSize = 18.sp
                         )
                     }
                 }
 
                 if (verificationState == null) {
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text(if (isLogin) "Ещё нет аккаунта?" else "Уже есть аккаунт?", color = Color.Gray, fontFamily = InterFontFamily, fontSize = 16.sp)
+                    Text(if (isLogin) "Ещё нет аккаунта?" else "Уже есть аккаунт?", color = Color.Gray, fontFamily = InterFontFamily, fontSize = 14.sp)
                     TextButton(onClick = { isLogin = !isLogin }) {
-                        Text(if (isLogin) "Зарегистрироваться" else "Авторизоваться", color = UmamiOrange, fontFamily = InterFontFamily, fontWeight = FontWeight.Bold, fontSize = 24.sp)
+                        Text(if (isLogin) "Зарегистрироваться" else "Войти в профиль", color = UmamiOrange, fontFamily = InterFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     }
                 }
             }
