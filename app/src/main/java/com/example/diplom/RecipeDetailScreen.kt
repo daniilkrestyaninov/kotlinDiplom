@@ -27,6 +27,7 @@ import com.example.diplom.data.*
 import com.example.diplom.ui.theme.InterFontFamily
 import com.example.diplom.ui.theme.UmamiOrange
 import kotlinx.coroutines.launch
+import androidx.compose.ui.graphics.Brush
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -250,12 +251,11 @@ fun UmamiRecipeDetailScreen(
                                 contentScale = androidx.compose.ui.layout.ContentScale.Crop
                             )
                         } else {
-                            Box(
+                            RecipeImagePlaceholder(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(200.dp)
                                     .clip(RoundedCornerShape(24.dp))
-                                    .background(UmamiOrange.copy(alpha = 0.5f))
                             )
                         }
 
@@ -309,12 +309,7 @@ fun UmamiRecipeDetailScreen(
                                             contentScale = androidx.compose.ui.layout.ContentScale.Crop
                                         )
                                     } else {
-                                        Box(
-                                            modifier = Modifier.size(40.dp).clip(CircleShape).background(UmamiOrange.copy(alpha = 0.2f)),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(recipe.User.username.firstOrNull()?.uppercase() ?: "?", fontWeight = FontWeight.Bold, color = UmamiOrange)
-                                        }
+                                        AvatarPlaceholder(modifier = Modifier.size(40.dp))
                                     }
  
                                     Spacer(modifier = Modifier.width(12.dp))
@@ -476,9 +471,12 @@ fun UmamiRecipeDetailScreen(
                                                     val qty = ingredient.pivot?.quantity ?: ""
                                                     val unit = ingredient.pivot?.unit ?: ""
                                                     val note = ingredient.pivot?.note ?: ""
+                                                    val cleanQty = if (qty.startsWith("__unit_override:")) qty.substringAfter("__unit_override:") else qty
+                                                    val cleanUnit = if (unit.startsWith("__unit_override:")) unit.substringAfter("__unit_override:") else unit
+                                                    val cleanNote = if (note.startsWith("__unit_override:")) "" else note
                                                     val detail = listOfNotNull(
-                                                        if (qty.isNotBlank()) "$qty $unit".trim() else null,
-                                                        note.takeIf { it.isNotBlank() }
+                                                        if (cleanQty.isNotBlank()) "$cleanQty $cleanUnit".trim() else null,
+                                                        cleanNote.takeIf { it.isNotBlank() }
                                                     ).joinToString(" · ")
                                                     if (detail.isNotEmpty()) {
                                                         Text(detail, fontFamily = InterFontFamily, color = UmamiOrange, fontSize = 13.sp)
@@ -534,6 +532,9 @@ fun UmamiRecipeDetailScreen(
                                     ) {
                                         Column(modifier = Modifier.padding(16.dp)) {
                                             NutritionRow("Калории", "${recipe.calorific ?: "—"} ккал")
+                                            NutritionRow("Белки", formatGram(recipe.proteins))
+                                            NutritionRow("Жиры", formatGram(recipe.fats))
+                                            NutritionRow("Углеводы", formatGram(recipe.carbohydrates))
                                             NutritionRow("Порции", "${recipe.portion ?: "—"}")
                                             NutritionRow("Время готовки", "${recipe.cookingTime ?: "—"} мин")
                                             NutritionRow("Сложность", recipe.difficulty ?: "—")
@@ -1141,5 +1142,14 @@ fun TasteRatingSelector(
                 }
             }
         }
+    }
+}
+
+fun formatGram(value: Float?): String {
+    if (value == null) return "—"
+    return if (value % 1 == 0f) {
+        "${value.toInt()} г"
+    } else {
+        String.format(java.util.Locale.US, "%.1f г", value)
     }
 }

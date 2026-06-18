@@ -233,7 +233,11 @@ fun AddRecipeScreen(navController: NavController, recipeId: String? = null, draf
                 selectedCookingId = r.typeCooking?.id?.toString()
                 selectedCelebrationId = r.celebration?.id?.toString()
                 selectedIngredients = r.ingredients?.map { ing ->
-                    SelectedIngredientUi(id = ing.id?.toIntOrNull(), name = ing.name ?: "", quantity = ing.pivot?.quantity ?: "", unit = ing.pivot?.unit ?: "", note = ing.pivot?.note ?: "")
+                    val rawUnit = ing.pivot?.unit ?: ""
+                    val cleanUnit = if (rawUnit.startsWith("__unit_override:")) rawUnit.substringAfter("__unit_override:") else rawUnit
+                    val rawNote = ing.pivot?.note ?: ""
+                    val cleanNote = if (rawNote.startsWith("__unit_override:")) "" else rawNote
+                    SelectedIngredientUi(id = ing.id?.toIntOrNull(), name = ing.name ?: "", quantity = ing.pivot?.quantity ?: "", unit = cleanUnit, note = cleanNote)
                 } ?: emptyList()
                 steps.clear()
                 r.steps?.sortedBy { it.stepNumber }?.forEach { steps.add(StepData(description = it.description, uploadedUrl = it.imageUrl)) }

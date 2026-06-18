@@ -1,10 +1,15 @@
 package com.example.diplom.data
 
+import android.app.Application
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
+import com.example.diplom.data.local.UmamiDatabase
+import com.example.diplom.data.local.CachedFavoriteRecipe
+import com.example.diplom.data.local.CachedMyRecipe
+import com.google.gson.Gson
 
 sealed class RecipeDetailState {
     object Loading : RecipeDetailState()
@@ -12,7 +17,11 @@ sealed class RecipeDetailState {
     data class Error(val message: String) : RecipeDetailState()
 }
 
-class RecipeDetailViewModel : ViewModel() {
+class RecipeDetailViewModel(application: Application) : AndroidViewModel(application) {
+    private val db = UmamiDatabase.getDatabase(application)
+    private val dao = db.dao()
+    private val gson = Gson()
+
     private val _state = mutableStateOf<RecipeDetailState>(RecipeDetailState.Loading)
     val state: State<RecipeDetailState> = _state
     
@@ -22,6 +31,31 @@ class RecipeDetailViewModel : ViewModel() {
         val recipeIdLong = id.toLongOrNull()
         viewModelScope.launch {
             _state.value = RecipeDetailState.Loading
+            
+            // 1. Try to load from cache first
+            var cachedRecipe: Recipe? = null
+            var cachedIsFavorited = false
+            if (recipeIdLong != null) {
+                try {
+                    val fav = dao.getCachedFavoriteById(recipeIdLong)
+                    if (fav != null) {
+                        cachedRecipe = gson.fromJson(fav.recipeJson, Recipe::class.java)
+                        cachedIsFavorited = true
+                    } else {
+                        val myRec = dao.getCachedMyRecipeById(recipeIdLong)
+                        if (myRec != null) {
+                            cachedRecipe = gson.fromJson(myRec.recipeJson, Recipe::class.java)
+                        }
+                    }
+                    if (cachedRecipe != null) {
+                        _state.value = RecipeDetailState.Success(cachedRecipe, emptyList(), cachedIsFavorited)
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("RecipeDetailVM", "Failed to load cached recipe detail", e)
+                }
+            }
+
+            // 2. Fetch fresh version from network
             try {
                 val recipe = recipeService.getRecipeById(id)
                 val comments = recipeService.getComments(id)
@@ -41,16 +75,38 @@ class RecipeDetailViewModel : ViewModel() {
                         val favorites = ApiClient.userService.getFavorites()
                         if (recipeIdLong != null) {
                             isFavorited = favorites.any { it.id == recipeIdLong }
-                            android.util.Log.d("RecipeDetailVM", "Is favorited: $isFavorited (found in ${favorites.size} favorites)")
                         }
                     } catch (e: Exception) {
                         android.util.Log.e("RecipeDetailVM", "Failed to check favorite status", e)
                     }
+                } else {
+                    isFavorited = cachedIsFavorited
                 }
                 
                 _state.value = RecipeDetailState.Success(recipe, comments, isFavorited)
+
+                // 3. Update local database cache
+                if (recipeIdLong != null) {
+                    try {
+                        if (isFavorited) {
+                            dao.insertFavorites(listOf(CachedFavoriteRecipe(id = recipeIdLong, recipeJson = gson.toJson(recipe))))
+                        } else {
+                            dao.deleteFavoriteById(recipeIdLong)
+                        }
+                        val hasMyRecipeCached = dao.getCachedMyRecipeById(recipeIdLong) != null
+                        if (hasMyRecipeCached) {
+                            dao.insertMyRecipes(listOf(CachedMyRecipe(id = recipeIdLong, recipeJson = gson.toJson(recipe))))
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("RecipeDetailVM", "Failed to update cache", e)
+                    }
+                }
             } catch (e: Exception) {
-                _state.value = RecipeDetailState.Error("Не удалось загрузить рецепт")
+                android.util.Log.e("RecipeDetailVM", "Failed to load recipe from network", e)
+                // If we don't have a cached version, show error screen
+                if (_state.value !is RecipeDetailState.Success) {
+                    _state.value = RecipeDetailState.Error("Не удалось загрузить рецепт")
+                }
             }
         }
     }

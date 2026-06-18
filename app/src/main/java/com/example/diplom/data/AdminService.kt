@@ -86,6 +86,9 @@ interface AdminService {
     @POST("admin/users/bulk-block")
     suspend fun bulkBlockUsers(@Body body: Map<String, @JvmSuppressWildcards List<String>>)
 
+    @DELETE("admin/users/{id}")
+    suspend fun deleteUser(@Path("id") id: String)
+
     @POST("admin/recipes/bulk-delete")
     suspend fun bulkDeleteRecipes(@Body body: Map<String, @JvmSuppressWildcards List<String>>)
 

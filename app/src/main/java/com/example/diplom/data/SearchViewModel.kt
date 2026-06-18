@@ -21,34 +21,42 @@ class SearchViewModel : ViewModel() {
 
     var searchQuery = mutableStateOf("")
     var activeTab = mutableStateOf(0) // 0 - Recipes, 1 - Users
+    val selectedCategoryId = mutableStateOf<String?>(null)
 
     private val recipeService = ApiClient.recipeService
     private val userService = ApiClient.userService
     private var searchJob: Job? = null
 
+    init {
+        performSearch()
+    }
+
+    fun toggleCategory(id: String) {
+        selectedCategoryId.value = if (selectedCategoryId.value == id) null else id
+        performSearch()
+    }
+
     fun onSearchQueryChange(query: String) {
         searchQuery.value = query
         searchJob?.cancel()
-        if (query.isBlank()) {
-            _searchState.value = SearchResultState.Idle
-            return
-        }
-
         searchJob = viewModelScope.launch {
-            delay(500) // Debounce
+            if (query.isNotBlank()) {
+                delay(500) // Debounce only when typing text
+            }
             performSearch()
         }
     }
 
     fun performSearch() {
-        if (searchQuery.value.isBlank()) return
-
         viewModelScope.launch {
             _searchState.value = SearchResultState.Loading
             try {
                 if (activeTab.value == 0) {
                     // Search recipes
-                    val recipes = recipeService.getRecipes(search = searchQuery.value)
+                    val recipes = recipeService.getRecipes(
+                        categoryId = selectedCategoryId.value,
+                        search = searchQuery.value.takeIf { it.isNotBlank() }
+                    )
                     _searchState.value = SearchResultState.Success(recipes, emptyList())
                 } else {
                     // Search users
@@ -63,8 +71,6 @@ class SearchViewModel : ViewModel() {
 
     fun setTab(index: Int) {
         activeTab.value = index
-        if (searchQuery.value.isNotBlank()) {
-            performSearch()
-        }
+        performSearch()
     }
 }

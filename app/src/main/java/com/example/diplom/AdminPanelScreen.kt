@@ -99,16 +99,16 @@ fun AdminPanelScreen(navController: NavController, viewModel: AdminViewModel = v
             item {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     AdminMenuCard(
-                        title = "Верификация",
-                        icon = Icons.Default.VerifiedUser,
-                        modifier = Modifier.weight(1f),
-                        onClick = { navController.navigate("admin_verifications") }
-                    )
-                    AdminMenuCard(
                         title = "Пользователи",
                         icon = Icons.Default.People,
                         modifier = Modifier.weight(1f),
                         onClick = { navController.navigate("admin_users") }
+                    )
+                    AdminMenuCard(
+                        title = "Рецепты",
+                        icon = Icons.Default.Restaurant,
+                        modifier = Modifier.weight(1f),
+                        onClick = { navController.navigate("admin_recipes") }
                     )
                 }
             }
@@ -144,18 +144,6 @@ fun AdminPanelScreen(navController: NavController, viewModel: AdminViewModel = v
                         modifier = Modifier.weight(1f),
                         onClick = { navController.navigate("admin_menu") }
                     )
-                }
-            }
-
-            item {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    AdminMenuCard(
-                        title = "Рецепты",
-                        icon = Icons.Default.Restaurant,
-                        modifier = Modifier.weight(1f),
-                        onClick = { navController.navigate("admin_recipes") }
-                    )
-                    Spacer(modifier = Modifier.weight(1f))
                 }
             }
 
@@ -351,15 +339,6 @@ fun PlatformStatsChart(stats: Map<String, Any>, onNavigate: (String) -> Unit) {
             "admin_appeals", 
             "Апелляции на блокировку от пользователей. Требуют беспристрастной перепроверки модератором.",
             "Разбор апелляций"
-        ),
-        ChartItem(
-            "Верификации", 
-            verifications, 
-            Color(0xFF009688), 
-            Icons.Default.VerifiedUser, 
-            "admin_verifications", 
-            "Заявки на получение статуса верифицированного повара-профессионала. Нажмите для проверки дипломов.",
-            "Рассмотреть заявки"
         )
     )
 
@@ -421,15 +400,16 @@ fun PlatformStatsChart(stats: Map<String, Any>, onNavigate: (String) -> Unit) {
                     .padding(4.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                val tabTitles = listOf("Столбцы", "Тренды", "Доли")
+                val tabTitles = listOf("Столбцы", "Доли")
                 tabTitles.forEachIndexed { index, title ->
-                    val isTabSelected = selectedTab == index
+                    val targetTab = if (index == 0) 0 else 2
+                    val isTabSelected = selectedTab == targetTab
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(12.dp))
                             .background(if (isTabSelected) Color.White else Color.Transparent)
-                            .clickable { selectedTab = index }
+                            .clickable { selectedTab = targetTab }
                             .padding(vertical = 8.dp),
                         contentAlignment = Alignment.Center
                     ) {
@@ -547,7 +527,6 @@ fun PlatformStatsChart(stats: Map<String, Any>, onNavigate: (String) -> Unit) {
                                         "Отзывы" -> "Отзывы"
                                         "Жалобы" -> "Жалобы"
                                         "Апелляции" -> "Апел."
-                                        "Верификации" -> "Вериф."
                                         else -> item.name
                                     }
                                     Text(
@@ -924,32 +903,6 @@ fun PlatformStatsChart(stats: Map<String, Any>, onNavigate: (String) -> Unit) {
                                             fontWeight = FontWeight.SemiBold,
                                             fontSize = 12.sp,
                                             color = item.color,
-                                            fontFamily = InterFontFamily
-                                        )
-                                    }
-                                }
-                                
-                                // Decorative growth tag
-                                Surface(
-                                    color = Color(0xEFE8F5E9),
-                                    shape = RoundedCornerShape(8.dp)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.TrendingUp,
-                                            contentDescription = null,
-                                            tint = Color(0xFF2E7D32),
-                                            modifier = Modifier.size(12.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(2.dp))
-                                        Text(
-                                            text = "+8.4%",
-                                            color = Color(0xFF2E7D32),
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Bold,
                                             fontFamily = InterFontFamily
                                         )
                                     }

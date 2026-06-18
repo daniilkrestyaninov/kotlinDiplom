@@ -38,7 +38,8 @@ data class Recipe(
     @SerializedName("cooked_count") var cookedCount: Int? = null,
     @SerializedName("personal_note") var personalNote: String? = null,
     @SerializedName("taste_averages") val tasteAverages: TasteAverages? = null,
-    val User: User? = null
+    val User: User? = null,
+    @SerializedName("created_at") val createdAt: String? = null
 )
 
 data class TasteAverages(

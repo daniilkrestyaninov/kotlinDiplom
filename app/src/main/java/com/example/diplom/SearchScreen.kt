@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -32,6 +33,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.graphics.Brush
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,40 +81,33 @@ fun SearchScreen(
                     }
                 }
             },
-            shape = RoundedCornerShape(24.dp),
+            shape = RoundedCornerShape(16.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                unfocusedBorderColor = Color(0xFFE5E5E5),
+                unfocusedBorderColor = Color.Transparent,
                 focusedBorderColor = UmamiOrange,
-                unfocusedContainerColor = Color(0xFFFAFAFA),
-                focusedContainerColor = Color.White
+                unfocusedContainerColor = Color(0xFFF1F3F5),
+                focusedContainerColor = Color(0xFFF1F3F5),
+                focusedTextColor = Color.Black,
+                unfocusedTextColor = Color.Black
             ),
             singleLine = true
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
-        // Tabs
-        TabRow(
-            selectedTabIndex = activeTab,
-            containerColor = Color.White,
-            contentColor = UmamiOrange,
-            indicator = { tabPositions ->
-                TabRowDefaults.Indicator(
-                    Modifier.tabIndicatorOffset(tabPositions[activeTab]),
-                    color = UmamiOrange
-                )
-            },
-            divider = {}
-        ) {
-            Tab(
-                selected = activeTab == 0,
-                onClick = { searchViewModel.setTab(0) },
-                text = { Text("Рецепты", fontFamily = InterFontFamily, fontWeight = if (activeTab == 0) FontWeight.Bold else FontWeight.Normal) }
-            )
-            Tab(
-                selected = activeTab == 1,
-                onClick = { searchViewModel.setTab(1) },
-                text = { Text("Люди", fontFamily = InterFontFamily, fontWeight = if (activeTab == 1) FontWeight.Bold else FontWeight.Normal) }
+        // Custom Capsule Tab Switcher
+        SearchTabSwitcher(
+            activeTab = activeTab,
+            onTabSelected = { searchViewModel.setTab(it) }
+        )
+
+        // Horizontal Category Row for Recipes Tab
+        if (activeTab == 0) {
+            val selectedCategoryId by searchViewModel.selectedCategoryId
+            SearchCategoriesRow(
+                categories = recipeViewModel.categories.value,
+                selectedCategoryId = selectedCategoryId,
+                onCategoryClick = { searchViewModel.toggleCategory(it) }
             )
         }
 
@@ -126,11 +121,8 @@ fun SearchScreen(
             ) { state ->
                 when (state) {
                     is SearchResultState.Idle -> {
-                        // Show "Discover" or "Recent" or Categories
-                        if (activeTab == 0) {
-                            CategoryDiscovery(recipeViewModel)
-                        } else {
-                            EmptySearchState(Icons.Default.Group, "Найдите интересных авторов")
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(color = UmamiOrange)
                         }
                     }
                     is SearchResultState.Loading -> {
@@ -154,46 +146,139 @@ fun SearchScreen(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun CategoryDiscovery(viewModel: RecipeViewModel) {
-    LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp)) {
-        item {
-            Text("Популярные категории", fontFamily = InterFontFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-            Spacer(modifier = Modifier.height(12.dp))
+fun SearchTabSwitcher(activeTab: Int, onTabSelected: (Int) -> Unit) {
+    Row(
+        modifier = Modifier
+            .padding(horizontal = 20.dp, vertical = 8.dp)
+            .fillMaxWidth()
+            .background(Color(0xFFF1F3F5), RoundedCornerShape(24.dp))
+            .padding(4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .clip(RoundedCornerShape(20.dp))
+                .background(if (activeTab == 0) UmamiOrange else Color.Transparent)
+                .clickable { onTabSelected(0) }
+                .padding(vertical = 10.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "Рецепты",
+                fontFamily = InterFontFamily,
+                fontWeight = FontWeight.Bold,
+                color = if (activeTab == 0) Color.White else Color.Gray,
+                fontSize = 14.sp
+            )
         }
-        item {
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                viewModel.categories.value.take(12).forEach { category ->
-                    FilterChip(
-                        selected = viewModel.selectedCategoryId == category.id.toString(),
-                        onClick = { viewModel.toggleCategory(category.id.toString()) },
-                        label = { Text(category.name, fontFamily = InterFontFamily) }
-                    )
-                }
-            }
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .clip(RoundedCornerShape(20.dp))
+                .background(if (activeTab == 1) UmamiOrange else Color.Transparent)
+                .clickable { onTabSelected(1) }
+                .padding(vertical = 10.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "Люди",
+                fontFamily = InterFontFamily,
+                fontWeight = FontWeight.Bold,
+                color = if (activeTab == 1) Color.White else Color.Gray,
+                fontSize = 14.sp
+            )
         }
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun FlowRow(
-    modifier: Modifier = Modifier,
-    horizontalArrangement: Arrangement.Horizontal = Arrangement.Start,
-    verticalArrangement: Arrangement.Vertical = Arrangement.Top,
-    content: @Composable () -> Unit
+fun SearchCategoryRowCard(
+    category: Category,
+    isSelected: Boolean,
+    onClick: () -> Unit
 ) {
-    androidx.compose.foundation.layout.FlowRow(
-        modifier = modifier,
-        horizontalArrangement = horizontalArrangement,
-        verticalArrangement = verticalArrangement,
-        content = { content() }
-    )
+    Card(
+        modifier = Modifier
+            .width(110.dp)
+            .height(55.dp)
+            .clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            if (!category.imageUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = normalizeImageUrl(category.imageUrl),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(Color(0xFFFFE0B2), Color(0xFFFFCC80))
+                            )
+                        )
+                )
+            }
+            
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        if (isSelected) {
+                            Brush.verticalGradient(
+                                colors = listOf(UmamiOrange.copy(alpha = 0.7f), UmamiOrange.copy(alpha = 0.9f))
+                            )
+                        } else {
+                            Brush.verticalGradient(
+                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f))
+                            )
+                        }
+                    )
+            )
+            
+            Text(
+                text = category.name,
+                fontFamily = InterFontFamily,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                fontSize = 12.sp,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(4.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun SearchCategoriesRow(
+    categories: List<Category>,
+    selectedCategoryId: String?,
+    onCategoryClick: (String) -> Unit
+) {
+    LazyRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        contentPadding = PaddingValues(horizontal = 20.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(categories) { category ->
+            val isSelected = selectedCategoryId == category.id.toString()
+            SearchCategoryRowCard(
+                category = category,
+                isSelected = isSelected,
+                onClick = { onCategoryClick(category.id.toString()) }
+            )
+        }
+    }
 }
 
 @Composable

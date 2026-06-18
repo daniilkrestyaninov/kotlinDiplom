@@ -170,6 +170,19 @@ class AdminViewModel(private val service: AdminService = ApiClient.adminService)
         }
     }
 
+    fun deleteUser(id: String, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                service.deleteUser(id)
+                loadUsers() // Refresh list
+                onComplete(true)
+            } catch (e: Exception) {
+                android.util.Log.e("AdminVM", "Failed to delete user", e)
+                onComplete(false)
+            }
+        }
+    }
+
     private val _reports = MutableStateFlow<AdminState<List<ReportItem>>>(AdminState.Idle)
     val reports = _reports.asStateFlow()
 

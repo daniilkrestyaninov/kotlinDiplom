@@ -572,13 +572,6 @@ fun UmamiProfileScreen(
                         HorizontalDivider(color = Color(0xFFF5F5F5), modifier = Modifier.padding(horizontal = 20.dp))
                     }
 
-                    ProfileMenuItem("Избранное", Icons.Default.Bookmark) {
-                        if (!isLoggedIn) onLoginClick() else navController.navigate(Routes.FAVORITES)
-                    }
-                    HorizontalDivider(color = Color(0xFFF5F5F5), modifier = Modifier.padding(horizontal = 20.dp))
-
-
-
                     ProfileMenuItem("ИИ Шеф", Icons.Default.Chat) {
                         if (!isLoggedIn) onLoginClick() else navController.navigate(Routes.CHAT)
                     }
@@ -588,38 +581,7 @@ fun UmamiProfileScreen(
                         if (!isLoggedIn) onLoginClick() else navController.navigate(Routes.PARSE_RECIPE)
                     }
                     
-                    if (isLoggedIn && user?.isVerified != true && profileData?.isVerified != true) {
-                        HorizontalDivider(color = Color(0xFFF5F5F5), modifier = Modifier.padding(horizontal = 20.dp))
-                        when (verificationRequest?.status?.lowercase()) {
-                            "pending" -> {
-                                ProfileMenuItem(
-                                    text = "Заявка на рассмотрении",
-                                    icon = Icons.Default.AccessTime,
-                                    tint = Color(0xFFFFA000)
-                                ) {
-                                    showPendingInfoDialog = true
-                                }
-                            }
-                            "rejected" -> {
-                                ProfileMenuItem(
-                                    text = "Верификация отклонена",
-                                    icon = Icons.Default.Warning,
-                                    tint = Color(0xFFD32F2F)
-                                ) {
-                                    showRejectionDetailsDialog = true
-                                }
-                            }
-                            else -> {
-                                ProfileMenuItem(
-                                    text = "Подтвердить аккаунт",
-                                    icon = Icons.Default.Verified,
-                                    tint = UmamiOrange
-                                ) {
-                                    showVerificationDialog = true
-                                }
-                            }
-                        }
-                    }
+
 
                     if (isLoggedIn) {
                         HorizontalDivider(color = Color(0xFFF5F5F5), modifier = Modifier.padding(horizontal = 20.dp))

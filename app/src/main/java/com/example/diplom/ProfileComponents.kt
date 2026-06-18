@@ -26,10 +26,11 @@ import com.example.diplom.ui.theme.*
 import com.example.diplom.ui.navigation.Routes
 import androidx.compose.runtime.*
 import kotlinx.coroutines.launch
-import com.example.diplom.R
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.ModeComment
+import androidx.compose.ui.graphics.Brush
+
 
 @Composable
 fun ProfileStat(count: Int, label: String) {
@@ -159,14 +160,18 @@ fun RecipePostCard(
                             }
                         }
                 ) {
-                    AsyncImage(
-                        model = normalizeImageUrl(recipe.User?.avatarUrl) ?: R.drawable.ic_avatar,
-                        contentDescription = "Пользователь",
-                        modifier = Modifier
-                            .size(45.dp)
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
+                    if (!recipe.User?.avatarUrl.isNullOrBlank()) {
+                        AsyncImage(
+                            model = normalizeImageUrl(recipe.User.avatarUrl),
+                            contentDescription = "Пользователь",
+                            modifier = Modifier
+                                .size(45.dp)
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        AvatarPlaceholder(modifier = Modifier.size(45.dp))
+                    }
                     Spacer(modifier = Modifier.width(10.dp))
                     Column {
                         Row(
@@ -256,12 +261,16 @@ fun RecipePostCard(
                     .aspectRatio(1f)
                     .clip(RoundedCornerShape(16.dp))
             ) {
-                AsyncImage(
-                    model = normalizeImageUrl(recipe.imageUrl) ?: R.drawable.img_pasta,
-                    contentDescription = recipe.title,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
+                if (!recipe.imageUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = normalizeImageUrl(recipe.imageUrl),
+                        contentDescription = recipe.title,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    RecipeImagePlaceholder(modifier = Modifier.fillMaxSize())
+                }
                 
                 // Bookmark
                 Surface(
@@ -287,10 +296,10 @@ fun RecipePostCard(
                     }
                 }
 
-                // Badges
+                // Badges (Privacy/AI only, top-left)
                 Row(
                     modifier = Modifier
-                        .align(Alignment.BottomEnd)
+                        .align(Alignment.TopStart)
                         .padding(12.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -300,12 +309,62 @@ fun RecipePostCard(
                     if (recipe.isPrivate == true) {
                         BadgeItem(icon = Icons.Default.Lock, text = "Приватно")
                     }
-                    BadgeItem(icon = Icons.Default.AccessTime, text = "${recipe.cookingTime ?: 0} мин")
-                    BadgeItem(icon = Icons.Default.KeyboardArrowDown, text = recipe.difficulty ?: "Легко")
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Metadata Row (Time, Difficulty)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.padding(horizontal = 4.dp)
+            ) {
+                // Time
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.AccessTime,
+                        contentDescription = "Время приготовления",
+                        tint = UmamiOrange,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "${recipe.cookingTime ?: 0} мин",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.DarkGray,
+                        fontFamily = InterFontFamily
+                    )
+                }
+
+                // Difficulty
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.SignalCellularAlt,
+                        contentDescription = "Сложность",
+                        tint = UmamiOrange,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = when (recipe.difficulty) {
+                            "1" -> "Легко"
+                            "2" -> "Средне"
+                            "3" -> "Сложно"
+                            "4" -> "Очень сложно"
+                            "5" -> "Шеф-повар"
+                            else -> recipe.difficulty ?: "Легко"
+                        },
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.DarkGray,
+                        fontFamily = InterFontFamily
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Title & Description
             Text(
@@ -328,46 +387,67 @@ fun RecipePostCard(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Stats
-            Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { 
-                    if (isBlocked) {
-                        android.widget.Toast.makeText(context, "Действие недоступно: аккаунт заблокирован", android.widget.Toast.LENGTH_SHORT).show()
-                    } else {
-                        onLikeClick() 
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(20.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { 
+                        if (isBlocked) {
+                            android.widget.Toast.makeText(context, "Действие недоступно: аккаунт заблокирован", android.widget.Toast.LENGTH_SHORT).show()
+                        } else {
+                            onLikeClick() 
+                        }
+                    }) {
+                        val currentLikes = recipe.likesCount ?: recipe.likes?.size ?: 0
+                        val currentIsLiked = recipe.isLiked == true
+
+                        Icon(
+                            if (currentIsLiked) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,
+                            contentDescription = "Like",
+                            modifier = Modifier.size(24.dp),
+                            tint = if (currentIsLiked) UmamiOrange else Color.Gray
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(currentLikes.toString(), fontWeight = FontWeight.Bold, color = Color.DarkGray, fontFamily = InterFontFamily)
                     }
-                }) {
-                    val currentLikes = recipe.likesCount ?: recipe.likes?.size ?: 0
-                    val currentIsLiked = recipe.isLiked == true
-
-                    Icon(
-                        if (currentIsLiked) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,
-                        contentDescription = "Like",
-                        modifier = Modifier.size(24.dp),
-                        tint = if (currentIsLiked) UmamiOrange else Color.Gray
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(currentLikes.toString(), fontWeight = FontWeight.Bold, color = Color.DarkGray, fontFamily = InterFontFamily)
-                }
                     val currentCommentsCount = comments?.size ?: recipe.commentsCount ?: 0
-                StatItem(
-                    icon = Icons.Outlined.ModeComment, 
-                    count = currentCommentsCount.toString(),
-                    modifier = Modifier.clickable { onCommentClick() }
-                )
-                
-                if (recipe.rating != null && recipe.rating!! > 0) {
                     StatItem(
-                        icon = Icons.Default.Star, 
-                        count = String.format("%.1f", recipe.rating),
-                        tint = UmamiOrange
+                        icon = Icons.Outlined.ModeComment, 
+                        count = currentCommentsCount.toString(),
+                        modifier = Modifier.clickable { onCommentClick() }
                     )
+                    
+                    if (recipe.rating != null && recipe.rating!! > 0) {
+                        StatItem(
+                            icon = Icons.Default.Star, 
+                            count = String.format("%.1f", recipe.rating),
+                            tint = UmamiOrange
+                        )
+                    }
                 }
 
-                if (recipe.viewsCount != null) {
-                    StatItem(
-                        icon = Icons.Default.Visibility, 
-                        count = recipe.viewsCount.toString()
-                    )
+                val timeLabel = formatRecipeTime(recipe.createdAt)
+                if (timeLabel.isNotBlank()) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Event,
+                            contentDescription = "Время публикации",
+                            tint = Color.Gray,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = timeLabel,
+                            fontSize = 12.sp,
+                            color = Color.Gray,
+                            fontFamily = InterFontFamily
+                        )
+                    }
                 }
             }
 
@@ -422,14 +502,18 @@ fun CommentPreview(comment: Comment, navController: NavController? = null) {
                 } else Modifier
             )
         ) {
-            AsyncImage(
-                model = normalizeImageUrl(comment.author?.avatarUrl) ?: R.drawable.ic_avatar,
-                contentDescription = null,
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(CircleShape),
-                contentScale = ContentScale.Crop
-            )
+            if (!comment.author?.avatarUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = normalizeImageUrl(comment.author.avatarUrl),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                AvatarPlaceholder(modifier = Modifier.size(32.dp))
+            }
             Spacer(modifier = Modifier.width(10.dp))
             Text(
                 text = comment.author?.name ?: comment.author?.username ?: "Пользователь",
@@ -449,3 +533,98 @@ fun CommentPreview(comment: Comment, navController: NavController? = null) {
         )
     }
 }
+
+fun formatRecipeTime(createdAt: String?): String {
+    if (createdAt.isNullOrBlank()) return ""
+    val formats = listOf(
+        "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+        "yyyy-MM-dd'T'HH:mm:ss'Z'",
+        "yyyy-MM-dd HH:mm:ss",
+        "yyyy-MM-dd'T'HH:mm:ss.SSSZ",
+        "yyyy-MM-dd'T'HH:mm:ssZ"
+    )
+    var date: java.util.Date? = null
+    for (fmt in formats) {
+        try {
+            val parser = java.text.SimpleDateFormat(fmt, java.util.Locale.US)
+            if (fmt.contains("'Z'")) {
+                parser.timeZone = java.util.TimeZone.getTimeZone("UTC")
+            }
+            date = parser.parse(createdAt)
+            if (date != null) break
+        } catch (e: Exception) {
+            // try next
+        }
+    }
+    if (date == null) return ""
+
+    val diffMs = System.currentTimeMillis() - date.time
+    if (diffMs < 0) return "Только что"
+    val diffSec = diffMs / 1000
+    val diffMin = diffSec / 60
+    val diffHour = diffMin / 60
+    val diffDay = diffHour / 24
+
+    return when {
+        diffSec < 60 -> "Только что"
+        diffMin < 60 -> "$diffMin мин. назад"
+        diffHour < 24 -> "$diffHour ч. назад"
+        diffDay < 7 -> "$diffDay дн. назад"
+        else -> {
+            val formatter = java.text.SimpleDateFormat("d MMMM yyyy", java.util.Locale("ru"))
+            formatter.format(date)
+        }
+    }
+}
+
+@Composable
+fun AvatarPlaceholder(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .background(Color(0xFFFFF0EC))
+            .clip(CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.Person,
+            contentDescription = "Аватар по умолчанию",
+            tint = UmamiOrange,
+            modifier = Modifier.fillMaxSize(0.6f)
+        )
+    }
+}
+
+@Composable
+fun RecipeImagePlaceholder(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .background(
+                brush = Brush.linearGradient(
+                    colors = listOf(Color(0xFFFFF7F5), Color(0xFFFFEBE5))
+                )
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.RestaurantMenu,
+                contentDescription = "Рецепт",
+                tint = UmamiOrange.copy(alpha = 0.6f),
+                modifier = Modifier.size(48.dp)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "UMAMI",
+                color = UmamiOrange.copy(alpha = 0.6f),
+                fontFamily = InterFontFamily,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 16.sp,
+                letterSpacing = 2.sp
+            )
+        }
+    }
+}
+

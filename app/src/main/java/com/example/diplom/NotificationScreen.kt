@@ -120,7 +120,7 @@ fun NotificationScreen(
                                     if (!isNotificationAdmin) {
                                         when (notification.type) {
                                             NotificationType.FOLLOW -> {
-                                                if (notification.actorId != 0) {
+                                                if (notification.actorId != null && notification.actorId != 0) {
                                                     navController.navigate("user_detail/${notification.actorId}")
                                                 }
                                             }

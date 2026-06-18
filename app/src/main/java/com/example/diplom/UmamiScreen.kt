@@ -307,14 +307,7 @@ fun UmamiTopBar(
             // Notification Bell with Badge
             BadgedBox(
                 badge = {
-                    if (unreadNotifications > 0) {
-                        Badge(
-                            containerColor = Color(0xFFFF6B6B),
-                            contentColor = Color.White
-                        ) {
-                            Text(unreadNotifications.toString())
-                        }
-                    }
+                    // Badge count hidden per user request to keep bell clean
                 },
                 modifier = Modifier.padding(end = 8.dp)
             ) {

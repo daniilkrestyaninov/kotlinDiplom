@@ -117,6 +117,9 @@ interface UmamiDao {
     @Query("DELETE FROM cached_favorites WHERE id = :id")
     suspend fun deleteFavoriteById(id: Long): Int
 
+    @Query("SELECT * FROM cached_favorites WHERE id = :id")
+    suspend fun getCachedFavoriteById(id: Long): CachedFavoriteRecipe?
+
     // My Recipes Cache
     @Query("SELECT * FROM cached_my_recipes ORDER BY createdAt DESC")
     suspend fun getCachedMyRecipes(): List<CachedMyRecipe>
@@ -126,6 +129,9 @@ interface UmamiDao {
 
     @Query("DELETE FROM cached_my_recipes")
     suspend fun clearMyRecipesCache(): Int
+
+    @Query("SELECT * FROM cached_my_recipes WHERE id = :id")
+    suspend fun getCachedMyRecipeById(id: Long): CachedMyRecipe?
 }
 
 @Database(entities = [LocalChatMessage::class, LocalRecipeDraft::class, CachedRecipe::class, LocalUserAccount::class, CachedFavoriteRecipe::class, CachedMyRecipe::class], version = 4)

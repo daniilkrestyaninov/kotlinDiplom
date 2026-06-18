@@ -135,7 +135,12 @@ fun AppealItemCard(appeal: AppealItem, onClick: () -> Unit) {
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
-                        text = appeal.status.uppercase(),
+                        text = when (appeal.status.lowercase()) {
+                            "pending" -> "На рассмотрении"
+                            "reviewed" -> "Отклонено"
+                            "resolved" -> "Одобрено"
+                            else -> appeal.status
+                        }.uppercase(),
                         color = when (appeal.status) {
                             "pending" -> UmamiOrange
                             "reviewed" -> Color.Blue

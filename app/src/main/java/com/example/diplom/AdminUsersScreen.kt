@@ -173,6 +173,13 @@ fun AdminUsersScreen(navController: NavController, viewModel: AdminViewModel = v
             onUnblock = {
                 viewModel.unblockUser(selectedUser!!.id)
                 showEditDialog = false
+            },
+            onDelete = {
+                viewModel.deleteUser(selectedUser!!.id) { success ->
+                    if (success) {
+                        showEditDialog = false
+                    }
+                }
             }
         )
     }
@@ -273,10 +280,12 @@ fun AdminEditUserDialog(
     onDismiss: () -> Unit,
     onSave: (name: String, bio: String, roleId: Int) -> Unit,
     onBlock: () -> Unit,
-    onUnblock: () -> Unit
+    onUnblock: () -> Unit,
+    onDelete: () -> Unit
 ) {
     var name by remember { mutableStateOf(user.name ?: "") }
     var bio by remember { mutableStateOf(user.bio ?: "") }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
     
     // Convert role string to ID: Admin = 1, User = 2, Moderator = 3 (Based on typical setup)
     var roleId by remember { 
@@ -287,6 +296,30 @@ fun AdminEditUserDialog(
                 else -> 2
             }
         ) 
+    }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Удаление аккаунта", fontFamily = InterFontFamily, fontWeight = FontWeight.Bold) },
+            text = { Text("Вы действительно хотите удалить аккаунт ${user.username} и все его данные? Это действие необратимо.", fontFamily = InterFontFamily) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteConfirm = false
+                        onDelete()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                ) {
+                    Text("Удалить", fontFamily = InterFontFamily)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) {
+                    Text("Отмена", fontFamily = InterFontFamily)
+                }
+            }
+        )
     }
 
     AlertDialog(
@@ -340,13 +373,18 @@ fun AdminEditUserDialog(
             }
         },
         dismissButton = {
-            if (user.isBlocked == true) {
-                TextButton(onClick = onUnblock) {
-                    Text("Разблокировать", color = Color(0xFF4CAF50), fontFamily = InterFontFamily)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick = { showDeleteConfirm = true }) {
+                    Text("Удалить", color = Color.Red, fontFamily = InterFontFamily)
                 }
-            } else {
-                TextButton(onClick = onBlock) {
-                    Text("Заблокировать", color = Color.Red, fontFamily = InterFontFamily)
+                if (user.isBlocked == true) {
+                    TextButton(onClick = onUnblock) {
+                        Text("Разблокировать", color = Color(0xFF4CAF50), fontFamily = InterFontFamily)
+                    }
+                } else {
+                    TextButton(onClick = onBlock) {
+                        Text("Заблокировать", color = Color.Red, fontFamily = InterFontFamily)
+                    }
                 }
             }
         }

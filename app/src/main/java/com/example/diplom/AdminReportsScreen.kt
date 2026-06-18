@@ -128,7 +128,12 @@ fun ReportCard(
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = report.status.uppercase(),
+                    text = when (report.status.lowercase()) {
+                        "pending" -> "На рассмотрении"
+                        "resolved" -> "Решено"
+                        "dismissed" -> "Отклонено"
+                        else -> report.status
+                    }.uppercase(),
                     fontSize = 12.sp,
                     color = if (report.status == "pending") Color.Red else Color.Gray,
                     fontWeight = FontWeight.Bold,
