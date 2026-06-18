@@ -226,15 +226,30 @@ fun UmamiUserDetailScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         // Display Name
-                        Text(
-                            text = profileData?.name ?: profileData?.username ?: "Пользователь",
-                            fontWeight = FontWeight.ExtraBold,
-                            color = Color.Black,
-                            fontSize = 24.sp,
-                            fontFamily = InterFontFamily,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = profileData?.name ?: profileData?.username ?: "Пользователь",
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.Black,
+                                fontSize = 24.sp,
+                                fontFamily = InterFontFamily,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
+                            )
+                            if (profileData?.isVerified == true) {
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Icon(
+                                    imageVector = Icons.Default.Verified,
+                                    contentDescription = "Верифицирован",
+                                    tint = Color(0xFF2196F3),
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                        }
                         
                         // @username
                         Text(

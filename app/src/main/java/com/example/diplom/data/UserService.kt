@@ -12,7 +12,8 @@ data class UserProfile(
     val bio: String?,
     @SerializedName("avatar_url") val avatarUrl: String?,
     @SerializedName("Recipes") val recipes: List<Recipe>? = null,
-    val stats: UserStats? = null
+    val stats: UserStats? = null,
+    @SerializedName("is_verified") val isVerified: Boolean? = false
 )
 
 data class UserStats(
@@ -68,7 +69,7 @@ interface UserService {
 
     // Favorites
     @GET("favorites")
-    suspend fun getFavorites(): List<FavoriteItem>
+    suspend fun getFavorites(): List<Recipe>
 
     @POST("recipes/{id}/favorite")
     suspend fun addFavorite(@Path("id") recipeId: String, @Body body: Map<String, Boolean> = emptyMap())
@@ -78,6 +79,9 @@ interface UserService {
 
     @POST("users/verify-request")
     suspend fun requestVerification(@Body body: Map<String, String>)
+
+    @GET("users/me/verification")
+    suspend fun getMyVerificationRequest(): VerificationRequest?
 
     @POST("users/me/appeal")
     suspend fun createAppeal(@Body body: Map<String, String>): Map<String, Any>

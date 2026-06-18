@@ -150,14 +150,18 @@ fun AddRecipeScreen(navController: NavController, recipeId: String? = null, draf
     suspend fun uploadImage(uri: Uri, folder: String): String? {
         return withContext(Dispatchers.IO) {
             try {
+                android.util.Log.d("AddRecipeScreen", "uploadImage start for uri: $uri, folder: $folder")
                 val inputStream = context.contentResolver.openInputStream(uri) ?: return@withContext null
                 val bytes = inputStream.readBytes()
                 inputStream.close()
                 val requestFile = bytes.toRequestBody("image/*".toMediaTypeOrNull())
                 val imagePart = MultipartBody.Part.createFormData("image", "photo.jpg", requestFile)
                 val folderPart = folder.toRequestBody("text/plain".toMediaTypeOrNull())
-                service.uploadImage(imagePart, folderPart).url
+                val res = service.uploadImage(imagePart, folderPart)
+                android.util.Log.d("AddRecipeScreen", "uploadImage success: ${res.url}")
+                res.url
             } catch (e: Exception) {
+                android.util.Log.e("AddRecipeScreen", "uploadImage failed for uri: $uri, folder: $folder", e)
                 null
             }
         }
@@ -166,19 +170,27 @@ fun AddRecipeScreen(navController: NavController, recipeId: String? = null, draf
     // Launchers
     val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let { 
-            if (imagePickTarget == "main") mainImageUri = it
-            else {
+            if (imagePickTarget == "main") {
+                mainImageUri = it
+                mainImageUrl = null // Clear old URL so it triggers upload
+            } else {
                 val idx = imagePickTarget.removePrefix("step_").toIntOrNull()
-                if (idx != null && idx < steps.size) steps[idx] = steps[idx].copy(imageUri = it)
+                if (idx != null && idx < steps.size) {
+                    steps[idx] = steps[idx].copy(imageUri = it, uploadedUrl = null) // Clear old step URL
+                }
             }
         }
     }
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
         if (success && cameraImageUri != null) {
-            if (imagePickTarget == "main") mainImageUri = cameraImageUri
-            else {
+            if (imagePickTarget == "main") {
+                mainImageUri = cameraImageUri
+                mainImageUrl = null // Clear old URL so it triggers upload
+            } else {
                 val idx = imagePickTarget.removePrefix("step_").toIntOrNull()
-                if (idx != null && idx < steps.size) steps[idx] = steps[idx].copy(imageUri = cameraImageUri)
+                if (idx != null && idx < steps.size) {
+                    steps[idx] = steps[idx].copy(imageUri = cameraImageUri, uploadedUrl = null) // Clear old step URL
+                }
             }
         }
     }
@@ -248,18 +260,31 @@ fun AddRecipeScreen(navController: NavController, recipeId: String? = null, draf
                     ?: emptyList()).forEach { steps.add(it) }
                 if (steps.isEmpty()) steps.add(StepData())
                 AiDraft.suggestion = null
-            } else {
                 // Try load from Room Draft
                 val savedDraft = dao.getDraft()
                 if (savedDraft != null && savedDraft.title.isNotBlank()) {
                     // We could show a dialog, but for now just auto-restore
                     title = savedDraft.title
                     description = savedDraft.description
-                    mainImageUrl = savedDraft.mainImageUrl
+                    val draftUrl = savedDraft.mainImageUrl
+                    if (draftUrl != null && (draftUrl.startsWith("content://") || draftUrl.startsWith("file://"))) {
+                        mainImageUrl = null
+                        mainImageUri = Uri.parse(draftUrl)
+                    } else {
+                        mainImageUrl = draftUrl
+                        mainImageUri = null
+                    }
                     selectedIngredients = Gson().fromJson(savedDraft.ingredientsJson, Array<SelectedIngredientUi>::class.java).toList()
                     val savedSteps = Gson().fromJson(savedDraft.stepsJson, Array<StepData>::class.java).toList()
                     steps.clear()
-                    steps.addAll(savedSteps)
+                    steps.addAll(savedSteps.map { step ->
+                        val stepUrl = step.uploadedUrl
+                        if (stepUrl != null && (stepUrl.startsWith("content://") || stepUrl.startsWith("file://"))) {
+                            step.copy(uploadedUrl = null, imageUri = Uri.parse(stepUrl))
+                        } else {
+                            step
+                        }
+                    })
                     Toast.makeText(context, "Черновик восстановлен", Toast.LENGTH_SHORT).show()
                 }
             }
@@ -267,14 +292,29 @@ fun AddRecipeScreen(navController: NavController, recipeId: String? = null, draf
     }
 
     // Auto-Save Effect
-    LaunchedEffect(title, description, selectedIngredients, steps.size, mainImageUrl) {
+    LaunchedEffect(
+        title,
+        description,
+        selectedIngredients,
+        steps.size,
+        mainImageUrl,
+        mainImageUri,
+        steps.map { it.imageUri?.toString() ?: it.uploadedUrl }
+    ) {
         if (recipeId == null && !isGenerated && title.isNotBlank()) {
+            val stepsToSave = steps.map { step ->
+                if (step.uploadedUrl == null && step.imageUri != null) {
+                    step.copy(uploadedUrl = step.imageUri.toString())
+                } else {
+                    step
+                }
+            }
             val draft = LocalRecipeDraft(
                 title = title,
                 description = description,
                 ingredientsJson = Gson().toJson(selectedIngredients),
-                stepsJson = Gson().toJson(steps.toList()),
-                mainImageUrl = mainImageUrl
+                stepsJson = Gson().toJson(stepsToSave),
+                mainImageUrl = mainImageUri?.toString() ?: mainImageUrl
             )
             dao.saveDraft(draft)
         }
@@ -304,10 +344,32 @@ fun AddRecipeScreen(navController: NavController, recipeId: String? = null, draf
                         onClick = {
                             if (currentStep < 3) {
                                 // Validation before next step
-                                if (currentStep == 0 && title.isBlank()) {
-                                    Toast.makeText(context, "Введите название", Toast.LENGTH_SHORT).show()
-                                } else if (currentStep == 0 && description.isBlank()) {
-                                    Toast.makeText(context, "Введите описание", Toast.LENGTH_SHORT).show()
+                                if (currentStep == 0) {
+                                    val timeVal = cookingTime.toIntOrNull()
+                                    val portionVal = portion.toIntOrNull()
+                                    if (title.isBlank()) {
+                                        Toast.makeText(context, "Введите название", Toast.LENGTH_SHORT).show()
+                                    } else if (description.isBlank()) {
+                                        Toast.makeText(context, "Введите описание", Toast.LENGTH_SHORT).show()
+                                    } else if (timeVal == null || timeVal < 1) {
+                                        Toast.makeText(context, "Укажите корректное время приготовления (мин)", Toast.LENGTH_SHORT).show()
+                                    } else if (portionVal == null || portionVal < 1) {
+                                        Toast.makeText(context, "Укажите корректное число порций", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        currentStep++
+                                    }
+                                } else if (currentStep == 1) {
+                                    if (selectedIngredients.isEmpty()) {
+                                        Toast.makeText(context, "Рецепт должен содержать хотя бы один ингредиент", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        currentStep++
+                                    }
+                                } else if (currentStep == 2) {
+                                    if (steps.isEmpty() || steps.any { it.description.isBlank() }) {
+                                        Toast.makeText(context, "Опишите все шаги приготовления", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        currentStep++
+                                    }
                                 } else {
                                     currentStep++
                                 }
@@ -317,15 +379,32 @@ fun AddRecipeScreen(navController: NavController, recipeId: String? = null, draf
                                     isLoading = true
                                     try {
                                         // 1. Upload images if needed
-                                        if (mainImageUri != null && mainImageUrl == null) {
+                                        var mainUrlToUse = mainImageUrl
+                                        if (mainUrlToUse != null && (mainUrlToUse.startsWith("content://") || mainUrlToUse.startsWith("file://"))) {
+                                            mainUrlToUse = null
+                                        }
+                                        android.util.Log.d("AddRecipeScreen", "PUBLISH START: mainImageUri=$mainImageUri, mainImageUrl=$mainImageUrl, mainUrlToUse=$mainUrlToUse")
+                                        if (mainImageUri != null && mainUrlToUse == null) {
                                             isMainImageUploading = true
-                                            mainImageUrl = uploadImage(mainImageUri!!, "recipes")
+                                            android.util.Log.d("AddRecipeScreen", "PUBLISH: Uploading main image $mainImageUri")
+                                            mainUrlToUse = uploadImage(mainImageUri!!, "recipes")
+                                            mainImageUrl = mainUrlToUse
+                                            android.util.Log.d("AddRecipeScreen", "PUBLISH: Uploaded main image URL=$mainUrlToUse")
                                             isMainImageUploading = false
                                         }
-                                        steps.forEachIndexed { index, step ->
-                                            if (step.imageUri != null && step.uploadedUrl == null) {
+                                        val stepsWithUploadedUrls = steps.mapIndexed { index, step ->
+                                            var stepUrl = step.uploadedUrl
+                                            if (stepUrl != null && (stepUrl.startsWith("content://") || stepUrl.startsWith("file://"))) {
+                                                stepUrl = null
+                                            }
+                                            if (step.imageUri != null && stepUrl == null) {
                                                 steps[index] = step.copy(isUploading = true)
-                                                steps[index] = steps[index].copy(uploadedUrl = uploadImage(step.imageUri!!, "steps"), isUploading = false)
+                                                val uploaded = uploadImage(step.imageUri!!, "steps")
+                                                val updatedStep = step.copy(uploadedUrl = uploaded, isUploading = false)
+                                                steps[index] = updatedStep
+                                                updatedStep
+                                            } else {
+                                                step
                                             }
                                         }
 
@@ -333,7 +412,7 @@ fun AddRecipeScreen(navController: NavController, recipeId: String? = null, draf
                                             title = title,
                                             description = description,
                                             difficulty = difficulty,
-                                            imageUrl = mainImageUrl,
+                                            imageUrl = mainUrlToUse,
                                             cookingTime = cookingTime.replace(",", ".").toIntOrNull() ?: 0,
                                             portion = portion.replace(",", ".").toIntOrNull() ?: 1,
                                             calorific = calorific.replace(",", ".").toIntOrNull(),
@@ -347,7 +426,7 @@ fun AddRecipeScreen(navController: NavController, recipeId: String? = null, draf
                                             celebrationId = selectedCelebrationId?.toIntOrNull(),
                                             cookingId = selectedCookingId?.toIntOrNull(),
                                             ingredients = selectedIngredients.map { IngredientInput(id = it.id, name = if (it.id == null) it.name else null, quantity = it.quantity, unit = it.unit, note = it.note) },
-                                            steps = steps.mapIndexed { idx, s -> StepInput(stepNumber = idx + 1, description = s.description, imageUrl = s.uploadedUrl) },
+                                            steps = stepsWithUploadedUrls.mapIndexed { idx, s -> StepInput(stepNumber = idx + 1, description = s.description, imageUrl = s.uploadedUrl) },
                                             categories = selectedCategoryIds.mapNotNull { it.toIntOrNull() }
                                         )
 
@@ -396,7 +475,19 @@ fun AddRecipeScreen(navController: NavController, recipeId: String? = null, draf
                                         Toast.makeText(context, "Готово!", Toast.LENGTH_SHORT).show()
                                         navController.popBackStack()
                                     } catch (e: Exception) {
-                                        Toast.makeText(context, "Ошибка сохранения", Toast.LENGTH_SHORT).show()
+                                        android.util.Log.e("AddRecipeScreen", "Failed to save recipe", e)
+                                        val errorMsg = if (e is retrofit2.HttpException) {
+                                            try {
+                                                val json = e.response()?.errorBody()?.string()
+                                                val map = Gson().fromJson(json, Map::class.java)
+                                                map["message"]?.toString() ?: "Ошибка сохранения"
+                                            } catch (_: Exception) {
+                                                "Ошибка сохранения"
+                                            }
+                                        } else {
+                                            "Ошибка сохранения"
+                                        }
+                                        Toast.makeText(context, errorMsg, Toast.LENGTH_LONG).show()
                                     } finally { isLoading = false }
                                 }
                             }
@@ -677,6 +768,10 @@ fun IngredientSelectionDialog(all: List<Ingredient>, selected: List<SelectedIngr
 }
 
 private fun createTempImageUri(context: Context): Uri {
-    val file = File.createTempFile("recipe_photo_", ".jpg", context.cacheDir)
+    val imagesDir = File(context.cacheDir, "images")
+    if (!imagesDir.exists()) {
+        imagesDir.mkdirs()
+    }
+    val file = File.createTempFile("recipe_photo_", ".jpg", imagesDir)
     return FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
 }

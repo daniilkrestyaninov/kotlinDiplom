@@ -65,7 +65,8 @@ object Routes {
 @Composable
 fun UmamiApp(tokenManager: TokenManager) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val authViewModel: AuthViewModel = viewModel(factory = AuthViewModel.provideFactory(tokenManager))
+    val application = context.applicationContext as android.app.Application
+    val authViewModel: AuthViewModel = viewModel(factory = AuthViewModel.provideFactory(application, tokenManager))
     val authState by authViewModel.state
     val isLoggedIn = authState is AuthState.Success
     val username = if (authState is AuthState.Success) (authState as AuthState.Success).user.username else null

@@ -48,4 +48,10 @@ interface AuthService {
 
     @POST("auth/resend-code")
     suspend fun resendCode(@Body request: Map<String, String>): Map<String, String>
+
+    @POST("auth/password-recovery")
+    suspend fun passwordRecovery(@Body request: Map<String, String>): Map<String, String>
+
+    @POST("auth/reset-password")
+    suspend fun resetPassword(@Body request: Map<String, String>): Map<String, String>
 }

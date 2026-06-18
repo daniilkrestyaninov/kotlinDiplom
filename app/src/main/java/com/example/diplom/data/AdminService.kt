@@ -26,6 +26,8 @@ data class VerificationRequest(
     val full_name: String,
     val info: String?,
     val status: String,
+    val reason: String? = null,
+    @SerializedName("admin_notes") val adminNotes: String? = null,
     val User: UserBrief? = null
 )
 

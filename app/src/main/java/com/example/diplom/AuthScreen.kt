@@ -37,6 +37,9 @@ fun AuthModal(
     var confirmPassword by remember { mutableStateOf("") }
     var verificationCode by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var isPasswordRecovery by remember { mutableStateOf(false) }
+    var recoveryStep by remember { mutableIntStateOf(1) }
 
     val state by viewModel.state
     val verificationState = state as? AuthState.VerificationRequired
@@ -56,7 +59,15 @@ fun AuthModal(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = if (verificationState != null) "Подтверждение почты" else if (isLogin) "Вход в профиль" else "Регистрация",
+                    text = if (verificationState != null) {
+                        "Подтверждение почты"
+                    } else if (isPasswordRecovery) {
+                        if (recoveryStep == 1) "Восстановление пароля" else "Новый пароль"
+                    } else if (isLogin) {
+                        "Вход в профиль"
+                    } else {
+                        "Регистрация"
+                    },
                     fontFamily = InterFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 24.sp
@@ -86,68 +97,145 @@ fun AuthModal(
                         Text("Переотправить код", color = UmamiOrange, fontSize = 12.sp)
                     }
                 } else {
-                    if (!isLogin) {
+                    if (isPasswordRecovery) {
+                        if (recoveryStep == 1) {
+                            Text(
+                                "Введите email вашего аккаунта для получения кода восстановления.",
+                                fontFamily = InterFontFamily,
+                                fontSize = 14.sp,
+                                color = Color.Gray
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            OutlinedTextField(
+                                value = email,
+                                onValueChange = { email = it },
+                                placeholder = { Text("Email", color = Color.Gray) },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(24.dp)
+                            )
+                        } else {
+                            Text(
+                                "Код отправлен на $email. Введите код и новый пароль.",
+                                fontFamily = InterFontFamily,
+                                fontSize = 14.sp,
+                                color = Color.Gray
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            OutlinedTextField(
+                                value = verificationCode,
+                                onValueChange = { verificationCode = it },
+                                placeholder = { Text("Код из письма", color = Color.Gray) },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(24.dp)
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            OutlinedTextField(
+                                value = password,
+                                onValueChange = { password = it },
+                                placeholder = { Text("Новый пароль", color = Color.Gray) },
+                                visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                                trailingIcon = {
+                                    IconButton(onClick = { showPassword = !showPassword }) {
+                                        Icon(
+                                            if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                            contentDescription = null,
+                                            tint = UmamiOrange
+                                        )
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(24.dp)
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            OutlinedTextField(
+                                value = confirmPassword,
+                                onValueChange = { confirmPassword = it },
+                                placeholder = { Text("Повторите новый пароль", color = Color.Gray) },
+                                visualTransformation = PasswordVisualTransformation(),
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(24.dp)
+                            )
+                        }
+                    } else {
+                        if (!isLogin) {
+                            OutlinedTextField(
+                                value = username,
+                                onValueChange = { username = it },
+                                placeholder = { Text("Логин", color = Color.Gray) },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(24.dp)
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            OutlinedTextField(
+                                value = name,
+                                onValueChange = { name = it },
+                                placeholder = { Text("Имя", color = Color.Gray) },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(24.dp)
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+
                         OutlinedTextField(
-                            value = username,
-                            onValueChange = { username = it },
-                            placeholder = { Text("Логин", color = Color.Gray) },
+                            value = email,
+                            onValueChange = { email = it },
+                            placeholder = { Text("Email", color = Color.Gray) },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(24.dp)
                         )
+
                         Spacer(modifier = Modifier.height(12.dp))
 
                         OutlinedTextField(
-                            value = name,
-                            onValueChange = { name = it },
-                            placeholder = { Text("Имя", color = Color.Gray) },
+                            value = password,
+                            onValueChange = { password = it },
+                            placeholder = { Text("Пароль", color = Color.Gray) },
+                            visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                            trailingIcon = {
+                                IconButton(onClick = { showPassword = !showPassword }) {
+                                    Icon(
+                                        if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                        contentDescription = null,
+                                        tint = UmamiOrange
+                                    )
+                                }
+                            },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(24.dp)
                         )
-                        Spacer(modifier = Modifier.height(12.dp))
-                    }
 
-                    OutlinedTextField(
-                        value = email,
-                        onValueChange = { email = it },
-                        placeholder = { Text("Email", color = Color.Gray) },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(24.dp)
-                    )
+                        if (!isLogin) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            OutlinedTextField(
+                                value = confirmPassword,
+                                onValueChange = { confirmPassword = it },
+                                placeholder = { Text("Повторите пароль", color = Color.Gray) },
+                                visualTransformation = PasswordVisualTransformation(),
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(24.dp)
+                            )
+                        }
 
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    OutlinedTextField(
-                        value = password,
-                        onValueChange = { password = it },
-                        placeholder = { Text("Пароль", color = Color.Gray) },
-                        visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
-                        trailingIcon = {
-                            IconButton(onClick = { showPassword = !showPassword }) {
-                                Icon(
-                                    if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                    contentDescription = null,
-                                    tint = UmamiOrange
+                        if (isLogin) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            TextButton(
+                                onClick = {
+                                    isPasswordRecovery = true
+                                    recoveryStep = 1
+                                },
+                                modifier = Modifier.align(Alignment.End),
+                                contentPadding = PaddingValues(0.dp)
+                            ) {
+                                Text(
+                                    "Забыли пароль?",
+                                    color = Color.Gray,
+                                    fontFamily = InterFontFamily,
+                                    fontSize = 14.sp
                                 )
                             }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(24.dp)
-                    )
-
-                    if (!isLogin) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        OutlinedTextField(
-                            value = confirmPassword,
-                            onValueChange = { confirmPassword = it },
-                            placeholder = { Text("Повторите пароль", color = Color.Gray) },
-                            visualTransformation = PasswordVisualTransformation(),
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(24.dp)
-                        )
+                        }
                     }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("Забыли пароль?", color = Color.Gray, fontFamily = InterFontFamily, fontSize = 14.sp)
                 }
 
                 if (state is AuthState.Error) {
@@ -167,6 +255,23 @@ fun AuthModal(
                                     passwordForAutoLogin = verificationState.password
                                 )
                             }
+                            isPasswordRecovery -> {
+                                if (recoveryStep == 1) {
+                                    if (email.isNotBlank()) {
+                                        viewModel.requestPasswordRecovery(email) {
+                                            recoveryStep = 2
+                                        }
+                                    }
+                                } else {
+                                    if (verificationCode.isNotBlank() && password.isNotBlank() && password == confirmPassword) {
+                                        viewModel.resetPassword(email, verificationCode, password) {
+                                            isPasswordRecovery = false
+                                            recoveryStep = 1
+                                            android.widget.Toast.makeText(context, "Пароль успешно изменен", android.widget.Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                }
+                            }
                             isLogin -> viewModel.login(email, password)
                             password == confirmPassword -> viewModel.register(username, name, email, password)
                         }
@@ -182,6 +287,7 @@ fun AuthModal(
                         Text(
                             when {
                                 verificationState != null -> "Подтвердить"
+                                isPasswordRecovery -> if (recoveryStep == 1) "Отправить код" else "Сбросить пароль"
                                 isLogin -> "Войти"
                                 else -> "Создать аккаунт"
                             },
@@ -193,10 +299,20 @@ fun AuthModal(
                 }
 
                 if (verificationState == null) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(if (isLogin) "Ещё нет аккаунта?" else "Уже есть аккаунт?", color = Color.Gray, fontFamily = InterFontFamily, fontSize = 14.sp)
-                    TextButton(onClick = { isLogin = !isLogin }) {
-                        Text(if (isLogin) "Зарегистрироваться" else "Войти в профиль", color = UmamiOrange, fontFamily = InterFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    if (isPasswordRecovery) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        TextButton(onClick = { 
+                            isPasswordRecovery = false 
+                            recoveryStep = 1
+                        }) {
+                            Text("Назад к входу", color = UmamiOrange, fontFamily = InterFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        }
+                    } else {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(if (isLogin) "Ещё нет аккаунта?" else "Уже есть аккаунт?", color = Color.Gray, fontFamily = InterFontFamily, fontSize = 14.sp)
+                        TextButton(onClick = { isLogin = !isLogin }) {
+                            Text(if (isLogin) "Зарегистрироваться" else "Войти в профиль", color = UmamiOrange, fontFamily = InterFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        }
                     }
                 }
             }

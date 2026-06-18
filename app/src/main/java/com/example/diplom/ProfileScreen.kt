@@ -48,6 +48,9 @@ fun UmamiProfileScreen(
     val scope = rememberCoroutineScope()
     val userService = ApiClient.userService
     val context = LocalContext.current
+    val db = remember { com.example.diplom.data.local.UmamiDatabase.getDatabase(context) }
+    val dao = remember { db.dao() }
+    val gson = remember { com.google.gson.Gson() }
 
     var profileData by remember { mutableStateOf<UserProfile?>(null) }
     var myRecipes by remember { mutableStateOf<List<Recipe>>(emptyList()) }
@@ -67,6 +70,9 @@ fun UmamiProfileScreen(
     var showVerificationDialog by remember { mutableStateOf(false) }
     var showAppealDialog by remember { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
+    var verificationRequest by remember { mutableStateOf<VerificationRequest?>(null) }
+    var showPendingInfoDialog by remember { mutableStateOf(false) }
+    var showRejectionDetailsDialog by remember { mutableStateOf(false) }
 
     // Avatar upload
     var currentAvatarUrl by remember(user?.avatarUrl) { mutableStateOf(user?.avatarUrl) }
@@ -110,18 +116,99 @@ fun UmamiProfileScreen(
     // Load profile data
     LaunchedEffect(user?.id) {
         if (user != null) {
+            // 1. Load cached profile & recipes first
             try {
-                profileData = userService.getUserProfile(user.id)
+                val cached = dao.getUserAccount()
+                if (cached != null) {
+                    if (!cached.profileJson.isNullOrBlank()) {
+                        val cachedProfile = gson.fromJson(cached.profileJson, UserProfile::class.java)
+                        profileData = cachedProfile
+                        if (cachedProfile.recipes != null) {
+                            myRecipes = cachedProfile.recipes
+                        }
+                    }
+                }
+                
+                // Also load cached individual personal recipes if list is empty
+                if (myRecipes.isEmpty()) {
+                    val cachedMyRecipes = dao.getCachedMyRecipes()
+                    if (cachedMyRecipes.isNotEmpty()) {
+                        myRecipes = cachedMyRecipes.map {
+                            gson.fromJson(it.recipeJson, Recipe::class.java)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("ProfileScreen", "Failed to load cached profile/recipes", e)
+            }
+
+            // 2. Fetch fresh profile data
+            try {
+                val freshProfile = userService.getUserProfile(user.id)
+                profileData = freshProfile
+                
+                // Cache full UserProfile in user_account
+                try {
+                    val currentCached = dao.getUserAccount()
+                    if (currentCached != null) {
+                        dao.saveUserAccount(
+                            currentCached.copy(
+                                profileJson = gson.toJson(freshProfile),
+                                updatedAt = System.currentTimeMillis()
+                            )
+                        )
+                    } else {
+                        dao.saveUserAccount(
+                            com.example.diplom.data.local.LocalUserAccount(
+                                id = user.id,
+                                userJson = gson.toJson(user),
+                                profileJson = gson.toJson(freshProfile)
+                            )
+                        )
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("ProfileScreen", "Failed to cache UserProfile", e)
+                }
+            } catch (_: Exception) {}
+
+            // Fetch verification request
+            try {
+                verificationRequest = userService.getMyVerificationRequest()
             } catch (_: Exception) {}
 
             // Use recipes from profile data if available
             if (profileData?.recipes != null) {
                 myRecipes = profileData!!.recipes!!
+                // Cache my recipes
+                try {
+                    dao.clearMyRecipesCache()
+                    dao.insertMyRecipes(myRecipes.map { r ->
+                        com.example.diplom.data.local.CachedMyRecipe(
+                            id = r.id,
+                            recipeJson = gson.toJson(r)
+                        )
+                    })
+                } catch (e: Exception) {
+                    android.util.Log.e("ProfileScreen", "Failed to cache my recipes", e)
+                }
             } else {
                 // Fallback
                 isLoadingRecipes = true
                 try {
-                    myRecipes = userService.getUserRecipes(user.id)
+                    val fetched = userService.getUserRecipes(user.id)
+                    myRecipes = fetched
+                    // Cache my recipes
+                    try {
+                        dao.clearMyRecipesCache()
+                        dao.insertMyRecipes(myRecipes.map { r ->
+                            com.example.diplom.data.local.CachedMyRecipe(
+                                id = r.id,
+                                recipeJson = gson.toJson(r)
+                            )
+                        })
+                    } catch (e: Exception) {
+                        android.util.Log.e("ProfileScreen", "Failed to cache my recipes", e)
+                    }
                 } catch (_: Exception) {}
                 isLoadingRecipes = false
             }
@@ -258,13 +345,27 @@ fun UmamiProfileScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         // Display Name
-                        Text(
-                            text = user?.name ?: user?.username ?: "Личный профиль",
-                            fontWeight = FontWeight.ExtraBold,
-                            color = Color.Black,
-                            fontSize = 24.sp,
-                            fontFamily = InterFontFamily
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = user?.name ?: user?.username ?: "Личный профиль",
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.Black,
+                                fontSize = 24.sp,
+                                fontFamily = InterFontFamily
+                            )
+                            if (user?.isVerified == true || profileData?.isVerified == true) {
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Icon(
+                                    imageVector = Icons.Default.Verified,
+                                    contentDescription = "Верифицирован",
+                                    tint = Color(0xFF2196F3),
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                        }
                         
                         // @username
                         if (isLoggedIn && user != null) {
@@ -487,10 +588,36 @@ fun UmamiProfileScreen(
                         if (!isLoggedIn) onLoginClick() else navController.navigate(Routes.PARSE_RECIPE)
                     }
                     
-                    if (isLoggedIn && user?.isVerified != true) {
+                    if (isLoggedIn && user?.isVerified != true && profileData?.isVerified != true) {
                         HorizontalDivider(color = Color(0xFFF5F5F5), modifier = Modifier.padding(horizontal = 20.dp))
-                        ProfileMenuItem("Подтвердить аккаунт", Icons.Default.Verified) {
-                            showVerificationDialog = true
+                        when (verificationRequest?.status?.lowercase()) {
+                            "pending" -> {
+                                ProfileMenuItem(
+                                    text = "Заявка на рассмотрении",
+                                    icon = Icons.Default.AccessTime,
+                                    tint = Color(0xFFFFA000)
+                                ) {
+                                    showPendingInfoDialog = true
+                                }
+                            }
+                            "rejected" -> {
+                                ProfileMenuItem(
+                                    text = "Верификация отклонена",
+                                    icon = Icons.Default.Warning,
+                                    tint = Color(0xFFD32F2F)
+                                ) {
+                                    showRejectionDetailsDialog = true
+                                }
+                            }
+                            else -> {
+                                ProfileMenuItem(
+                                    text = "Подтвердить аккаунт",
+                                    icon = Icons.Default.Verified,
+                                    tint = UmamiOrange
+                                ) {
+                                    showVerificationDialog = true
+                                }
+                            }
                         }
                     }
 
@@ -602,11 +729,71 @@ fun UmamiProfileScreen(
                     try {
                         userService.requestVerification(mapOf("full_name" to fullName, "info" to info))
                         android.widget.Toast.makeText(context, "Заявка отправлена", android.widget.Toast.LENGTH_SHORT).show()
+                        try {
+                            verificationRequest = userService.getMyVerificationRequest()
+                        } catch (_: Exception) {}
                     } catch (e: Exception) {
                         android.widget.Toast.makeText(context, "Ошибка отправки заявки", android.widget.Toast.LENGTH_SHORT).show()
                     }
                 }
                 showVerificationDialog = false
+            }
+        )
+    }
+
+    if (showPendingInfoDialog) {
+        AlertDialog(
+            onDismissRequest = { showPendingInfoDialog = false },
+            title = { Text("Заявка на рассмотрении", fontFamily = InterFontFamily, fontWeight = FontWeight.Bold) },
+            text = { Text("Ваша заявка на верификацию аккаунта находится на рассмотрении у модераторов платформы. Обычно это занимает не более 24 часов.", fontFamily = InterFontFamily) },
+            confirmButton = {
+                TextButton(onClick = { showPendingInfoDialog = false }) {
+                    Text("Хорошо", color = UmamiOrange, fontWeight = FontWeight.Bold)
+                }
+            }
+        )
+    }
+
+    if (showRejectionDetailsDialog) {
+        AlertDialog(
+            onDismissRequest = { showRejectionDetailsDialog = false },
+            title = { Text("Заявка отклонена", fontFamily = InterFontFamily, fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("К сожалению, ваша предыдущая заявка на верификацию была отклонена модератором.", fontFamily = InterFontFamily)
+                    val notes = verificationRequest?.adminNotes ?: verificationRequest?.reason ?: "Причина не указана."
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = Color(0xFFFFEBEE),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            text = "Причина: $notes",
+                            color = Color(0xFFC62828),
+                            fontFamily = InterFontFamily,
+                            modifier = Modifier.padding(12.dp),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                    Text("Вы можете исправить указанные замечания и подать заявку повторно.", fontFamily = InterFontFamily, fontSize = 13.sp, color = Color.Gray)
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showRejectionDetailsDialog = false
+                        showVerificationDialog = true
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = UmamiOrange)
+                ) {
+                    Text("Подать заново")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRejectionDetailsDialog = false }) {
+                    Text("Закрыть")
+                }
             }
         )
     }

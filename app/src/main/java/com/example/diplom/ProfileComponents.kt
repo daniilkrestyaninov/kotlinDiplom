@@ -40,13 +40,18 @@ fun ProfileStat(count: Int, label: String) {
 }
 
 @Composable
-fun ProfileMenuItem(text: String, icon: androidx.compose.ui.graphics.vector.ImageVector? = null, onClick: () -> Unit) {
+fun ProfileMenuItem(
+    text: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    tint: Color = UmamiOrange,
+    onClick: () -> Unit
+) {
     Row(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 16.dp, horizontal = 20.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (icon != null) {
-            Icon(imageVector = icon, contentDescription = null, tint = UmamiOrange, modifier = Modifier.size(24.dp))
+            Icon(imageVector = icon, contentDescription = null, tint = tint, modifier = Modifier.size(24.dp))
             Spacer(modifier = Modifier.width(16.dp))
         }
         Text(text, fontSize = 16.sp, fontFamily = InterFontFamily, modifier = Modifier.weight(1f))
@@ -69,7 +74,28 @@ fun UserListDialog(title: String, users: List<User>, currentUserId: String?, onD
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
-                            Text(u.name ?: u.username, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Start
+                            ) {
+                                Text(
+                                    u.name ?: u.username,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f, fill = false)
+                                )
+                                if (u.isVerified == true) {
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Icon(
+                                        imageVector = Icons.Default.Verified,
+                                        contentDescription = "Верифицирован",
+                                        tint = Color(0xFF2196F3),
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
                             Text("@${u.username}", color = Color.Gray, fontSize = 12.sp)
                         }
                     }
@@ -143,13 +169,28 @@ fun RecipePostCard(
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     Column {
-                        Text(
-                            recipe.User?.name ?: "Anonymous",
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = InterFontFamily,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Start
+                        ) {
+                            Text(
+                                recipe.User?.name ?: "Anonymous",
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = InterFontFamily,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
+                            )
+                            if (recipe.User?.isVerified == true) {
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Icon(
+                                    imageVector = Icons.Default.Verified,
+                                    contentDescription = "Верифицирован",
+                                    tint = Color(0xFF2196F3),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
                         Text("@${recipe.User?.username ?: "unknown"}", fontSize = 12.sp, color = Color.Gray, fontFamily = InterFontFamily, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }

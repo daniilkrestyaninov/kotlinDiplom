@@ -49,6 +49,8 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
     var selectedCelebrationId by mutableStateOf<String?>(null)
     var searchQuery by mutableStateOf("")
     var currentUserId: String? = null
+    private var hasFetchedNetwork = false
+    private var lastFetchedUserId: String? = null
 
     private val service = ApiClient.recipeService
     private var fetchJob: kotlinx.coroutines.Job? = null
@@ -79,7 +81,9 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
                             User = User(id = "", username = c.authorName ?: "Аноним", name = c.authorName, avatarUrl = null, isVerified = c.isVerified),
                             cookingTime = c.cookingTime,
                             difficulty = c.difficulty,
-                            calorific = c.calorific
+                            calorific = c.calorific,
+                            likesCount = c.likesCount ?: 0,
+                            isLiked = c.isLiked ?: false
                         )
                     })
                 }
@@ -94,7 +98,10 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun fetchRecipes(currentUserId: String? = null, forceRefresh: Boolean = false) {
-        if (!forceRefresh && _state.value is RecipeState.Success) return
+        val userIdChanged = currentUserId != lastFetchedUserId
+        if (!forceRefresh && hasFetchedNetwork && !userIdChanged) return
+        
+        lastFetchedUserId = currentUserId
         
         fetchJob?.cancel()
         fetchJob = viewModelScope.launch {
@@ -138,7 +145,7 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
                         val favorites = try { ApiClient.userService.getFavorites() } catch (_: Exception) { emptyList() }
                         
                         val followingIds = following.map { it.id }.toSet()
-                        val favoriteRecipeIds = favorites.map { it.recipe?.id }.filterNotNull().toSet()
+                        val favoriteRecipeIds = favorites.map { it.id }.toSet()
                         
                         recipes.forEach { recipe ->
                             recipe.User?.isFollowing = followingIds.contains(recipe.User?.id)
@@ -150,6 +157,7 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
                 }
                 
                 _state.value = RecipeState.Success(recipes.toList())
+                hasFetchedNetwork = true
 
                 // Сохраняем в кэш только если это основная лента без фильтров
                 if (noFilters) {
@@ -165,7 +173,9 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
                                 cookingTime = r.cookingTime,
                                 difficulty = r.difficulty,
                                 calorific = r.calorific,
-                                isVerified = r.User?.isVerified ?: false
+                                isVerified = r.User?.isVerified ?: false,
+                                likesCount = r.likesCount ?: r.likes?.size ?: 0,
+                                isLiked = r.isLiked ?: r.likes?.any { it.userId == currentUserId } ?: false
                             )
                         })
                     }
@@ -219,6 +229,20 @@ class RecipeViewModel(application: Application) : AndroidViewModel(application) 
                     } else {
                         service.likeRecipe(recipeId)
                     }
+                    try {
+                        val recipeIdInt = recipeId.toIntOrNull()
+                        if (recipeIdInt != null) {
+                            val cachedList = dao.getCachedFeed().first()
+                            val cached = cachedList.find { it.id == recipeIdInt }
+                            if (cached != null) {
+                                val updatedCached = cached.copy(
+                                    likesCount = (if (isCurrentlyLiked) (cached.likesCount ?: 1) - 1 else (cached.likesCount ?: 0) + 1).coerceAtLeast(0),
+                                    isLiked = !isCurrentlyLiked
+                                )
+                                dao.insertRecipes(listOf(updatedCached))
+                            }
+                        }
+                    } catch (_: Exception) {}
                 } catch (e: Exception) {
                     android.util.Log.e("RecipeViewModel", "Like toggle failed", e)
                     _state.value = currentState

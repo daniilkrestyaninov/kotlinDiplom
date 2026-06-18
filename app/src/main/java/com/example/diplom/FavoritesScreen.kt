@@ -109,34 +109,14 @@ fun UmamiFavoritesScreen(
                             }
                         }
                     } else {
-                        items(s.favorites, key = { it.id }) { fav ->
-                            val recipe = fav.recipe
-                            if (recipe == null) {
-                                // Fallback UI for items with missing recipe data
-                                Surface(
-                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                                    shape = RoundedCornerShape(16.dp),
-                                    color = Color(0xFFFEECEB)
-                                ) {
-                                    Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Default.Error, contentDescription = null, tint = Color.Red)
-                                        Spacer(modifier = Modifier.width(12.dp))
-                                        Text("Рецепт недоступен (ID: ${fav.recipeId})", color = Color.Red, fontSize = 14.sp)
-                                        Spacer(modifier = Modifier.weight(1f))
-                                        IconButton(onClick = { viewModel.removeFavorite(fav.recipeId.toString()) }) {
-                                            Icon(Icons.Default.Delete, contentDescription = "Удалить", tint = Color.Red)
-                                        }
-                                    }
+                        items(s.favorites, key = { it.id }) { recipe ->
+                            FavoriteRecipeCard(
+                                recipe = recipe,
+                                navController = navController,
+                                onRemove = {
+                                    viewModel.removeFavorite(recipe.id.toString())
                                 }
-                            } else {
-                                FavoriteRecipeCard(
-                                    recipe = recipe,
-                                    navController = navController,
-                                    onRemove = {
-                                        viewModel.removeFavorite(recipe.id.toString())
-                                    }
-                                )
-                            }
+                            )
                         }
                     }
                 }

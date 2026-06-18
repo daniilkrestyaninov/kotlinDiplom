@@ -35,6 +35,30 @@ data class CachedRecipe(
     val difficulty: String?,
     val calorific: Int?,
     val isVerified: Boolean = false,
+    val likesCount: Int? = 0,
+    val isLiked: Boolean? = false,
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "local_user_account")
+data class LocalUserAccount(
+    @PrimaryKey val id: String,
+    val userJson: String,
+    val profileJson: String? = null,
+    val updatedAt: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "cached_favorites")
+data class CachedFavoriteRecipe(
+    @PrimaryKey val id: Long,
+    val recipeJson: String,
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "cached_my_recipes")
+data class CachedMyRecipe(
+    @PrimaryKey val id: Long,
+    val recipeJson: String,
     val createdAt: Long = System.currentTimeMillis()
 )
 
@@ -69,9 +93,42 @@ interface UmamiDao {
 
     @Query("DELETE FROM cached_recipes")
     suspend fun clearFeedCache(): Int
+
+    // User Account
+    @Query("SELECT * FROM local_user_account LIMIT 1")
+    suspend fun getUserAccount(): LocalUserAccount?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun saveUserAccount(account: LocalUserAccount): Long
+
+    @Query("DELETE FROM local_user_account")
+    suspend fun clearUserAccount(): Int
+
+    // Favorites Cache
+    @Query("SELECT * FROM cached_favorites ORDER BY createdAt DESC")
+    suspend fun getCachedFavorites(): List<CachedFavoriteRecipe>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertFavorites(recipes: List<CachedFavoriteRecipe>): List<Long>
+
+    @Query("DELETE FROM cached_favorites")
+    suspend fun clearFavoritesCache(): Int
+
+    @Query("DELETE FROM cached_favorites WHERE id = :id")
+    suspend fun deleteFavoriteById(id: Long): Int
+
+    // My Recipes Cache
+    @Query("SELECT * FROM cached_my_recipes ORDER BY createdAt DESC")
+    suspend fun getCachedMyRecipes(): List<CachedMyRecipe>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertMyRecipes(recipes: List<CachedMyRecipe>): List<Long>
+
+    @Query("DELETE FROM cached_my_recipes")
+    suspend fun clearMyRecipesCache(): Int
 }
 
-@Database(entities = [LocalChatMessage::class, LocalRecipeDraft::class, CachedRecipe::class], version = 1)
+@Database(entities = [LocalChatMessage::class, LocalRecipeDraft::class, CachedRecipe::class, LocalUserAccount::class, CachedFavoriteRecipe::class, CachedMyRecipe::class], version = 4)
 abstract class UmamiDatabase : RoomDatabase() {
     abstract fun dao(): UmamiDao
 
@@ -85,7 +142,9 @@ abstract class UmamiDatabase : RoomDatabase() {
                     context.applicationContext,
                     UmamiDatabase::class.java,
                     "umami_database"
-                ).build()
+                )
+                .fallbackToDestructiveMigration()
+                .build()
                 INSTANCE = instance
                 instance
             }

@@ -40,7 +40,7 @@ class RecipeDetailViewModel : ViewModel() {
                         // Проверяем избранное
                         val favorites = ApiClient.userService.getFavorites()
                         if (recipeIdLong != null) {
-                            isFavorited = favorites.any { it.recipe?.id == recipeIdLong }
+                            isFavorited = favorites.any { it.id == recipeIdLong }
                             android.util.Log.d("RecipeDetailVM", "Is favorited: $isFavorited (found in ${favorites.size} favorites)")
                         }
                     } catch (e: Exception) {

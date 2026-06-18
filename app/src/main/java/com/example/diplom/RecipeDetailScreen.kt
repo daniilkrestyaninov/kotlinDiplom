@@ -319,14 +319,29 @@ fun UmamiRecipeDetailScreen(
  
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            recipe.User.name ?: recipe.User.username,
-                                            fontWeight = FontWeight.Bold,
-                                            fontFamily = InterFontFamily,
-                                            fontSize = 14.sp,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Start
+                                        ) {
+                                            Text(
+                                                recipe.User.name ?: recipe.User.username,
+                                                fontWeight = FontWeight.Bold,
+                                                fontFamily = InterFontFamily,
+                                                fontSize = 14.sp,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                                modifier = Modifier.weight(1f, fill = false)
+                                            )
+                                            if (recipe.User.isVerified == true) {
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Icon(
+                                                    imageVector = Icons.Default.Verified,
+                                                    contentDescription = "Верифицирован",
+                                                    tint = Color(0xFF2196F3),
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                            }
+                                        }
                                         Text("@${recipe.User.username}", color = Color.Gray, fontFamily = InterFontFamily, fontSize = 12.sp)
                                     }
  
@@ -764,12 +779,29 @@ fun CommentItem(
             Column(modifier = Modifier.padding(12.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            comment.author?.name ?: comment.author?.username ?: "Пользователь",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            fontFamily = InterFontFamily
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Start
+                        ) {
+                            Text(
+                                text = comment.author?.name ?: comment.author?.username ?: "Пользователь",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                fontFamily = InterFontFamily,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
+                            )
+                            if (comment.author?.isVerified == true) {
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Icon(
+                                    imageVector = Icons.Default.Verified,
+                                    contentDescription = "Верифицирован",
+                                    tint = Color(0xFF2196F3),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
                         
                         if (comment.rating != null && comment.rating > 0) {
                             Row(
